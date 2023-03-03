@@ -9,6 +9,8 @@ from warnings import warn
 from time import time
 from functools import reduce
 import polars as pl
+from classes.opt import OptimizeAllocation as opti
+from classes.generate_syntethic_data import Simulate
 
 warn('Running this module requires the package: polars 0.15.14')
 
@@ -91,7 +93,7 @@ class Backtester:
 
     """
 
-    def __init__(self, config: Config, strat_data, compo, timeserie=None, reshuffle=1):
+    def __init__(self, config: Config, strat_data, compo, return_mat, timeserie=None, reshuffle=1, generic=False):
         self._config = config
         self._calendar = config.calendar(timeserie[::reshuffle])  # create calendar
         self._universe = config.universe
@@ -101,6 +103,7 @@ class Backtester:
         self._weight_by_pk = dict()
         self._level_by_ts = dict()
         self.reshuffle = reshuffle
+        self.return_mat = return_mat
         self.compo = compo  # compo of indexes through time
 
         self.compute_positions(pos=strat_data[::reshuffle], index_name=config.name_index)
@@ -133,20 +136,19 @@ class Backtester:
                         ts=ts - self._timedelta,
                     )
 
-    def _compute_weight(self, ts: datetime, nb_stock):
+    def _compute_weight(self, ts: datetime):
         """
         nb_stock: we only use the columns 'sum_h' of the dataframe which is the number of stock which we hold
                 at time ts ==> allow us to compute the weight
         Function which compute the weight depending on the strategy
         """
-        nb_stock_to_hold = nb_stock.filter((pl.col('Date') == ts)).select(['sum_h'])
+        # nb_stock_to_hold = nb_stock.filter((pl.col('Date') == ts)).select(['sum_h'])
         # same weight attributed for stock we go long on
-        w = nb_stock_to_hold.apply(lambda x: np.divide(1, x)) if nb_stock_to_hold.to_pandas().values[0][0] != 0 else 0
+        # w = nb_stock_to_hold.apply(lambda x: np.divide(1, x)) if nb_stock_to_hold.to_pandas().values[0][0] != 0 else 0
 
         for underlying_code in self._universe:
-            # weight_giver: we multiply the weight given at the underlying by 0 (if not buy) or 1 (if buy)
             weight_given = (
-                    self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)]) * w
+                    self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])# * w
             )
             self._weight_by_pk[
                 (self._config.strategy_code, underlying_code, ts)
@@ -163,14 +165,14 @@ class Backtester:
         """
         perf_ = 0.0
         for underlying_code in self._universe:
-            posi = self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])
+            # posi = self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])
             key = (self._config.strategy_code, underlying_code, prev_ts)
 
             weight = self._weight_by_pk.get(
                 key
             )
             if weight is not None:
-                value = weight.value * posi
+                #value = weight.value * posi
                 current_quote = self._quote_by_pk.get(
                     (underlying_code, ts - self._timedelta)
                 )
@@ -181,11 +183,11 @@ class Backtester:
                 )
 
                 if current_quote is not None and previous_quote is not None:
-                    rdt = (current_quote.close / previous_quote.close - 1)
-                    perf_ += value * rdt
+                    rdt = current_quote.close / previous_quote.close - 1
+                    perf_ += weight.value * rdt
 
                     # update hit statistics
-                    value_int = value.to_numpy()[0][0].copy()
+                    value_int = weight.value.to_numpy()[0][0].copy()
                     if value_int != 0:
                         self.update_hit(rdt, value_int)
                 else:
@@ -201,11 +203,10 @@ class Backtester:
         :return: level of ptf
         """
         # compute the number of stock which will have a weight different from 0
-        nb_stock_to_hold_per_period = self.position.with_column(pl.fold(0, lambda x, y: x + y, pl.all().exclude('Date'))
-                                                                .alias('sum_h'))
         for ts in self._calendar:
-            self._compute_weight(ts, nb_stock_to_hold_per_period)
+            self._compute_weight(ts)
             if ts == self._config.start_ts:
+                # yesterday's close
                 quote = Quote(close=self._config.basis, ts=ts - self._timedelta)
                 self._level_by_ts[ts - self._timedelta] = quote
             else:
@@ -233,21 +234,20 @@ class Backtester:
         pos = pos.to_pandas()
         # select all the stock which have been in the index
         my_list = list(self.compo.values())
-        unique_list = list(set(reduce(lambda x,y : x+y, my_list)))
-        #unique_list = list(set(flat_list))
+        unique_list = list(set(reduce(lambda x, y: x + y, my_list)))
 
         self.position = pd.DataFrame(np.zeros((pos.shape[0], len(unique_list) + 1)), columns=['Date'] + unique_list)
         self.position.Date = pos['Date']
-        datetime_next_loop = [key[0] for key in self.compo.keys()] # list datetime recompute compo
+        datetime_next_loop = [key[0] for key in self.compo.keys()]  # list datetime recompute compo
         for ts in pos['Date']:
             # compo at time ts
-            ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts, datetime_next_loop) # date at which we take the compo
-            compo_ts = self.compo[(ts_for_dict, index_name[0])] # list compo at date ts
+            ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts, datetime_next_loop)  # date at which we take the compo
+            compo_ts = self.compo[(ts_for_dict, index_name[0])]  # list compo at date ts
             # position we take in this univers
-
-            # stop there
             pos_ts = self.compute_position_ts(compo_ts, pos, ts, q=q)
-            self.position.loc[self.position.Date == ts, compo_ts] = pos_ts
+            pos_ts_opt = self.opti_weights(pos_ts.copy(), ts)
+            self.position.loc[self.position.Date == ts, compo_ts] = pos_ts_opt[compo_ts]
+
         self.position = pl.convert.from_pandas(self.position)
 
     @staticmethod
@@ -279,20 +279,32 @@ class Backtester:
         :return: position for 1 timestamp
         """
         nb_position = int((len(compo) - 1) * q)
-        pos_ts = pos[pos.Date == ts]
-        long = np.sort(pos_ts.iloc[:, 1:], axis=1)[:, -nb_position - 1]
-        short = np.sort(pos_ts.iloc[:, 1:], axis=1)[:, nb_position]
+        pos_ts = pos.loc[pos.Date == ts, compo]
+        long = np.sort(pos_ts, axis=1)[:, -nb_position - 1]
+        short = np.sort(pos_ts, axis=1)[:, nb_position]
 
         # define the weight to 2 when values are >= to the quantile at 75%
-        weights_long = pos_ts.iloc[:, 1:].where(pos_ts.iloc[:, 1:].values < long.reshape(-1, 1), 2)
+        weights_long = pos_ts.where(pos_ts.values < long.reshape(-1, 1), 2)
         weights_long = weights_long.where(weights_long.values == 2)
 
         # define the weight to -1 when values are < to the quantile at 25%
-        weights_short = pos_ts.iloc[:, 1:].where(pos_ts.iloc[:, 1:].values > short.reshape(-1, 1), -1)
+        weights_short = pos_ts.where(pos_ts.values > short.reshape(-1, 1), -1)
         weights_short = weights_short.where(weights_short.values == -1)
 
         dfs = [weights_long, weights_short]
         return reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
+
+    def opti_weights(self, pos_ts, ts, type_strat_alloc='mv'):
+        returns = self.return_mat.copy()
+        for type in [1, -1]:  # type will be used to select position > or < than 0
+
+            # keep only passed date and stock we go long or short on
+            stocks_ = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
+            ret = returns[returns.Date < ts][stocks_]
+            alloc = opti(ret.T, type_strat_alloc, rf=0)
+            alloc.min_variance()
+            pos_ts.loc[:, stocks_] = pos_ts.loc[:, stocks_] * alloc.final_weight
+        return pos_ts
 
     def update_hit(self, returns=None, val=None, end=False):
         '''

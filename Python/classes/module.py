@@ -1,5 +1,7 @@
 import pandas as pd
-import blpapi
+#import blpapi
+import datetime as dt
+import numpy as np
 
 
 class BLP():
@@ -123,7 +125,7 @@ class BLP():
                 # -----------------------------------------------------------------------
         # Extract the data
         # -----------------------------------------------------------------------
-        # creer le disct le plus global
+        # creer le dict le plus global
         # create as many empty  dictionaries as field
         for field in strFields:
             globals()['dict_' + field] = {}
@@ -135,15 +137,18 @@ class BLP():
                 # recup la security
                 field_data = msg.getValue(i).getElement(self.FIELD_DATA)
 
+                # Dictionnary for each field
                 for field in strFields:
                     globals()['dict_' + field][ticker_name] = {}
 
+                # Value stocked in the adapted dictionnary
                 for j in range(0, field_data.numElements()):
                     field_name = str(field_data.getElement(j).name())
                     field_value = field_data.getElement(j).getValue()
 
                     globals()['dict_' + field_name][ticker_name] = field_value
 
+        # Dictionnary with the market data
         dict_Security_Fields = {}
         for field in strFields:
             dict_Security_Fields[field] = pd.DataFrame.from_dict(globals()['dict_' + field], orient="index",
@@ -283,7 +288,7 @@ class BLP():
 
         return dict_Security_Fields if len(strFields) > 1 else dict_Security_Fields[field]
 
-    def bds(self, strSecurity, strFields, strOverrideField='', strOverrideValue=''):
+    def bds(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate=''):
 
         """
             Summary:
@@ -375,12 +380,16 @@ class BLP():
                 # recup la security
                 field_data = msg.getValue(i).getElement(self.FIELD_DATA)
 
+                # Create Dictionnary for each field
                 for field in strFields:
                     globals()['dict_' + field][ticker_name] = {}
 
                 for j in range(0, field_data.numElements()):
+                    # Number of fields
                     numbers = field_data.getElement(j).numValues()
                     field_name = str(field_data.getElement(j).name())
+                    # If there is only 1 value in the field, get it
+                    # Else, get each value
                     if numbers == 1:
                         field_value = field_data.getElement(j).getValue()
                     else:
@@ -396,6 +405,67 @@ class BLP():
             dict_Security_Fields[field] = globals()['dict_' + field]# pd.DataFrame.from_dict(globals()['dict_' + field], orient="index")
 
         return dict_Security_Fields if len(strFields) > 1 else dict_Security_Fields[field]
+
+    def compo_per_date_old(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate='', rebal_index=52):
+        """
+            Summary:
+                Dictionnary of the composition for each date
+
+            Input:
+                strSecurity
+                strFields
+                strOverrideField
+                strOverrideValue
+                strEndDate
+                rebal_index
+
+            Output:
+               Dict
+        """
+        dico_compo = {}
+        start = strOverrideValue
+        for security in strSecurity:
+            # Initialisation override for each security
+            strOverrideValue = start
+            while strOverrideValue < strEndDate:
+                # Conversion date in string for each date to the end
+                date_ts = dt.datetime.strftime(strOverrideValue, "%Y%m%d")
+                # Calling BDS function and get value of the last column
+                dico_compo[(strOverrideValue, security)] = [self.bds(strSecurity, strFields, strOverrideField=strOverrideField,
+                                              strOverrideValue=date_ts, strEndDate=strEndDate)[strFields[-1]][security]]
+                strOverrideValue += dt.timedelta(weeks=rebal_index)
+        return dico_compo
+
+    def compo_per_date(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate='',
+                           rebal_index=52):
+        """
+            Summary:
+                Dictionnary of the composition for each date
+
+            Input:
+                strSecurity
+                strFields
+                strOverrideField
+                strOverrideValue
+                strEndDate
+                rebal_index
+
+            Output:
+               Dict
+        """
+        # Initialisation of the composition list with the first index composition
+        list_compo = np.array(self.bds(strSecurity, strFields, strOverrideField=strOverrideField, strOverrideValue=dt.datetime.strftime(strOverrideValue, "%Y%m%d"), strEndDate=strEndDate)[strFields[-1]][
+                strSecurity[0]])
+        while strOverrideValue < strEndDate:
+            strOverrideValue += dt.timedelta(weeks=rebal_index)
+            date_ts = dt.datetime.strftime(strOverrideValue, "%Y%m%d")
+            # Composition of the index at the rebalancing date
+            list_compo.loc[date_ts] = self.bds(strSecurity, strFields, strOverrideField=strOverrideField,
+                                                    strOverrideValue=date_ts, strEndDate=strEndDate)[strFields[-1]][
+                strSecurity[0]]
+
+
+        return list_compo
         """
         dict_Security_Fields = {}
         for field in strFields:
