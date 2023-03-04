@@ -15,6 +15,6 @@ The last update files:
 to BLP API
   
 
-- strategies_bloomberg: slighly changes compared to other script. I only keep the other one to keep alive the scripts
+- strategies_bloomberg: slighly changes compared to the other script. I only keep the other one to keep alive the scripts
 which are running without using the BLP API
   
