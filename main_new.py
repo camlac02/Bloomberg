@@ -31,7 +31,7 @@ if __name__ == '__main__':
     list_index = list(map(lambda x: x + " Equity", bloom2['INDX_MEMBERS'][tickers[0]]))
 
     # data = blp.bdh(list_index[:3], ['PX_LAST'], startDate, endDate) # CUR_MKT_CAP
-    data = pd.read_csv('data_blp.csv', index_col=0).dropna(axis=1)
+    data = pd.read_csv('data/data_blp.csv', index_col=0).dropna(axis=1)
     list_index = data.columns
     data.index = pd.to_datetime(data.index)
 
