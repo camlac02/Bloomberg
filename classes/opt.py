@@ -46,7 +46,7 @@ class OptimizeAllocation:
         self.sharpe = sharpe_ratio
 
     def variance_covariance_matrix(self):
-        return np.cov(self.return_matrix)
+        return np.cov(self.return_matrix) * np.sqrt(252)
 
     def min_variance(self):
         var_cov = self.variance_covariance_matrix()
@@ -69,6 +69,25 @@ class OptimizeAllocation:
         )
 
         self.final_weight = optimized_weight
+
+    def risk_parity(self):
+        _risk_contributions_fct = lambda w, C: (w @ C) * w / (w @ C @ w.T)
+        _deviations = lambda w, C, dev: np.sum(abs(_risk_contributions_fct(w, C) - dev), axis=1)
+
+        cons = {"type": "eq", "fun": lambda w: np.sum(w) - 1}
+        optimized_weight = np.array(
+            minimize(
+                _deviations,
+                self.initial_weight,
+                method="SLSQP",
+                constraints=cons,
+                args=(self.variance_covariance_matrix(), np.array([1/len(self.initial_weight)] * len(self.initial_weight)).reshape(1, -1)),
+                options={'maxiter': 100}
+            ).x
+        )
+
+        self.final_weight = optimized_weight
+
 
     def efficient_ptf(self, target_risk):
         ret_matrix = self.return_matrix
@@ -115,10 +134,10 @@ if __name__ == '__main__':
 
     opt = OptimizeAllocation(returns=q, w=np.array([0.1, 0.4, 0.4,0.1]), type_strat_alloc='sharpe')
     print(opt.type_strat_alloc)
-    #opt.max_sharpe()
+    opt.max_sharpe()
     print(opt.final_weight)
 
     opt = OptimizeAllocation(returns=q, w=np.array([0.1, 0.4, 0.4, 0.1]), type_strat_alloc='eff')
     print(opt.type_strat_alloc)
-    opt.efficient_ptf(target_risk=0.20)
+    opt.risk_parity()
     print(opt.final_weight)
