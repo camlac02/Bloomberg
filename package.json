@@ -13,10 +13,12 @@
     "eslint": "8.35.0",
     "eslint-config-next": "13.2.3",
     "express": "^4.18.2",
+    "moment": "^2.29.4",
     "next": "13.2.3",
     "python-shell": "^5.0.0",
     "react": "18.2.0",
     "react-chartjs-2": "^5.2.0",
+    "react-datepicker": "^4.10.0",
     "react-dom": "18.2.0",
     "swr": "^2.0.4"
   },

@@ -6,8 +6,9 @@ app.get('/api', (req, res) => {
     mode: 'text',
     pythonOptions: ['-u'], // get print results in real-time
     scriptPath: './Python/Bloomberg',
-    args: ['PX_LAST INDX_MWEIGHT_HIST', 'CAC Index', 'dt.datetime(2015, 1, 1)', 'dt.datetime(2019, 12, 3)', 'momentum'],
+    args: [req.query.fields, req.query.tickers, req.query.startdate, req.query.enddate, 'momentum'],
   };
+  console.log(options)
   //res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
   PythonShell.run('main_front.py', options).then((messages) => {
     // results is an array consisting of messages collected during execution
