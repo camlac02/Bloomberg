@@ -13,6 +13,7 @@ app.get('/api', (req, res) => {
   PythonShell.run('main_front.py', options).then((messages) => {
     // results is an array consisting of messages collected during execution
     //console.log('results: %j', messages);
+    console.log(messages)
     res.status(200);
     res.setHeader('Content-Type', 'application/json');
     res.json({ messages });

@@ -85,8 +85,8 @@ export default function Home() {
       </Head>
       <main>
       <div className="flex flex-row">
-  <div className="basis-1/4"/>
-  <div className="basis-2/4">
+  <div className="basis-32"/>
+  <div className="basis-full">
   <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-300 sm:text-6xl">BLOOMBERG</h1>
           <p className="mt-6 text-lg leading-8 text-gray-500">Data retrieval & applications</p>
@@ -100,7 +100,7 @@ export default function Home() {
       </div>
       <div className="col-span-12">
         <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500">Tickers</label>
-        <input type="text" id="example9" className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="CAC INDEX" value={chart.tickers} onChange={(e) => setChart({...chart, tickers: e.target.value})}/>
+        <input type="text" id="example9" className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="CAC Index" value={chart.tickers} onChange={(e) => setChart({...chart, tickers: e.target.value})}/>
       </div>
       <div className="col-span-6">
         <label htmlFor="example7" className="mb-1 block text-sm font-medium text-gray-500">Date de début</label>
@@ -129,13 +129,14 @@ export default function Home() {
         <button onClick={handleClick} type="button" className="rounded-lg border border-primary-500 bg-primary-500 px-5 py-2.5 text-center text-sm font-medium shadow-sm transition-all hover:border-primary-700 hover:bg-primary-700 focus:ring focus:ring-primary-200 disabled:cursor-not-allowed disabled:border-primary-300 disabled:bg-primary-300">VALIDER</button>
       </div>
     </div>
-  </form >
-  {finalChart ? <Chart chart={chart}/> :
+  </form>
+  
+</div>
+{finalChart ? <Chart chart={chart}/> :
   <p className="mt-6 text-lg leading-8 text-gray-500">Vous n'avez pas encore de graphe {chart.fields}</p>
   }
 </div>
-</div>
-<div className="basis-1/4"/>
+<div className="basis-32"/>
     </div>
   </main>
     </>
