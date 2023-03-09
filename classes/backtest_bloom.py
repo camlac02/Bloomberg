@@ -22,6 +22,11 @@ class Frequency(Enum):
     DAILY = "Daily"
 
 
+class TypeOptiWeights(Enum):
+    MIN_VARIANCE = 'min_variance'
+    MAX_SHARPE = 'max_sharpe'
+    RISK_PARITY = 'risk_parity'
+
 @dataclass
 class Config:
     universe: List[str]
@@ -94,7 +99,7 @@ class Backtester:
 
     """
 
-    def __init__(self, config: Config, data, compo, reshuffle=1, generic=False, lag1=None, lag2=None):
+    def __init__(self, config: Config, data, compo, reshuffle=1, generic=False, lag1=None, lag2=None, strat='min_variance'):
         self._config = config
         self.generic=generic
         strat_data, timeserie = self._data_manipulation(data, config.strategy_code, (lag1, lag2))
@@ -121,6 +126,8 @@ class Backtester:
                          'mean_ret_from_misses': list(), 'mean_ret_from_hits': list()}
         self.tuw = None  # time under water
         self.dd = None  # drawdown
+
+        self.opt_weights = strat
 
     def _data_manipulation(self, dataset, stypestrat, lags=(None, None)):
         """
@@ -347,7 +354,14 @@ class Backtester:
             stocks_ = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
             ret = returns[returns.Date < ts][stocks_]
             alloc = opti(ret.T, type_strat_alloc, rf=0)
-            alloc.min_variance()
+            if self.opt_weights == TypeOptiWeights.MIN_VARIANCE:
+                alloc.min_variance()
+            elif self.opt_weights == TypeOptiWeights.MAX_SHARPE:
+                alloc.max_sharpe()
+            elif self.opt_weights == TypeOptiWeights.RISK_PARITY:
+                alloc.risk_parity()
+            else:
+                raise ValueError('strat must be: min_variance, max_sharpe or risk_parity')
             pos_ts.loc[:, stocks_] = pos_ts.loc[:, stocks_] * alloc.final_weight
         return pos_ts
 

@@ -2,7 +2,7 @@ import sys
 import subprocess
 from functools import reduce
 import matplotlib.pyplot as plt
-from classes.backtest_bloom import Backtester, Config, Frequency
+from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
 import blpapi
 import numpy as np
 import pandas as pd
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     backtest = Backtester(config=configuration, data=data,
                           compo=bloom,
                           reshuffle=10,
-                          lag1=None, lag2=None, generic=True)
+                          lag1=None, lag2=None, generic=True, strat=TypeOptiWeights.MIN_VARIANCE)
 
     back = backtest.compute_levels()
     backtest_res = pd.DataFrame(back)
