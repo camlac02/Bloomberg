@@ -27,7 +27,7 @@ if __name__ == '__main__':
     strFields = ["PX_LAST", "INDX_MWEIGHT_HIST"]
     tickers = ["CAC Index"]
     startDate = dt.datetime(2015, 1, 1)
-    endDate = dt.datetime(2019, 12, 3)
+    endDate = dt.datetime(2023, 2, 10)
 
     bloom2 = blp.compo_per_date_old(strSecurity=tickers, strFields=strFields,
                      strOverrideField="END_DATE_OVERRIDE", strOverrideValue=startDate, strEndDate=endDate)
@@ -42,14 +42,14 @@ if __name__ == '__main__':
     configuration = Config(universe=list_index,
                            start_ts=startDate,
                            end_ts=endDate,
-                           strategy_code=TypeStrategy.mc.value,
+                           strategy_code=TypeStrategy.momentum.value,
                            name_index=tickers,
                            frequency=Frequency.DAILY)
 
     backtest = Backtester(config=configuration, data=data,
                           compo=bloom,
                           reshuffle=10,
-                          lag1=None, lag2=None, generic=False, strat=TypeOptiWeights.RISK_PARITY)
+                          lag1=30, lag2=200, generic=False, strat=TypeOptiWeights.MIN_VARIANCE)
 
     back = backtest.compute_levels()
     backtest_res = pd.DataFrame(back)
@@ -59,11 +59,12 @@ if __name__ == '__main__':
     plt.ylabel('ptf level')
     plt.title('ptf evolution - momentum')
     plt.legend()
-    plt.show()
+
     import yfinance as yf
     cac =yf.download('^FCHI', start=backtest.config.start_ts, end=backtest.config.end_ts).Close
     cac = 100*cac/cac.iloc[0]
     plt.plot(cac)
+    plt.show()
 
     # Daily drawdown
     plt.figure(2)
