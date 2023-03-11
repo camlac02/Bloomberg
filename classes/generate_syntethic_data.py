@@ -5,13 +5,15 @@ import pandas as pd
 class Simulate:
     def __init__(self, returns):
         self.ret = returns
+        self.ret[np.isnan(self.ret)] = 0
         self.correlated_returns_sim = None
         self.generic_data = None
 
     def simulation_return(self):
         # mean and return of true data
-        mu, std = self.ret.mean(axis = 0), self.ret.std(axis=0)
+        mu, std = np.nanmean(self.ret, axis=0), np.nanstd(self.ret, axis=0)
         # correlation between assets
+
         corr = np.corrcoef(self.ret, rowvar=False)
         cholesky = np.linalg.cholesky(corr)
 
@@ -23,11 +25,12 @@ class Simulate:
 
         # retrieve correlated returns
         correlated_returns_sim = mu + correlated_z_stats * std
-        correlated_returns_sim[0, :] = np.zeros((self.ret.shape[1]))
+        # correlated_returns_sim[0, :] = np.zeros((self.ret.shape[1]))
+        correlated_returns_sim = np.vstack([np.zeros(correlated_returns_sim.shape[1]), correlated_returns_sim])
         return correlated_returns_sim
 
-    def recover_dataset(self, S0, nIter=10):
-        self.correlated_returns_sim = np.mean([self.simulation_return() for i in range(nIter)], axis=0)
+    def recover_dataset(self, S0):
+        self.correlated_returns_sim = self.simulation_return()
         self.generic_data = S0.T * np.cumprod(1 + self.correlated_returns_sim, axis=0)
 
     def compute_sim_dataset(self, S0, idx, col):

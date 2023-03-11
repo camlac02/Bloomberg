@@ -42,6 +42,6 @@ class Strategies:
         else:
             raise ValueError('strategy name is not adapted')
 
-        self.strat_data.reset_index(inplace=True)
-        self.strat_data.rename(columns={"index": 'Date'}, inplace=True)
+        #self.strat_data.reset_index(inplace=True)
+        #self.strat_data.rename(columns={"index": 'Date'}, inplace=True)
 

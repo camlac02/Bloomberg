@@ -100,7 +100,7 @@ class Backtester:
     """
 
     def __init__(self, config: Config, data, compo, reshuffle=1, generic=False, lag1=None, lag2=None, strat='min_variance'):
-        self._config = config
+        self.config = config
         self.generic = generic
         strat_data, timeserie = self._data_manipulation(data, config.strategy_code, (lag1, lag2))
         self._calendar = config.calendar(timeserie[::reshuffle])  # create calendar
@@ -113,8 +113,9 @@ class Backtester:
         self.reshuffle = reshuffle
         self.compo = compo  # compo of indexes through time
 
+        self.opt_weights = strat
         self.compute_positions(pos=strat_data[::reshuffle], index_name=config.name_index)
-        if self._config.start_ts != timeserie['Date'][0]:
+        if self.config.start_ts != timeserie['Date'][0]:
             raise ValueError(
                 "starts_ts and the start date of the raw data have to be the same"
             )
@@ -127,7 +128,7 @@ class Backtester:
         self.tuw = None  # time under water
         self.dd = None  # drawdown
 
-        self.opt_weights = strat
+
 
     def _data_manipulation(self, dataset, stypestrat, lags=(None, None)):
         """
@@ -145,7 +146,8 @@ class Backtester:
         if self.generic:
             date_col = dataset.Date.to_numpy()
             sim = Simulate(self.return_mat.copy().iloc[:, 1:].to_numpy())
-            sim.compute_sim_dataset(dataset.iloc[0, 1:].to_numpy().reshape(-1, 1), idx=dataset.index, col=dataset.columns[1:])
+            # dataset.iloc[0, 1:].to_numpy().reshape(-1, 1)
+            sim.compute_sim_dataset(dataset.iloc[0, 1:].ffill().to_numpy().reshape(-1, 1), idx=dataset.index, col=dataset.columns[1:])
             dataset = sim.generic_data
             return_mat = pd.DataFrame(sim.correlated_returns_sim, columns=dataset.columns)
             dataset.insert(0, value=date_col, column='Date')
@@ -153,14 +155,14 @@ class Backtester:
 
         strat = Strategies(stypestrat)
         lag1, lag2 = lags
-        strat.data_strategies(dataset.iloc[0, 1:].copy(), lag1, lag2)
-        self._config.start_ts = strat.strat_data.Date.iloc[0]
-        strat_data = pl.convert.from_pandas(strat.strat_data)
+        strat.data_strategies(dataset.iloc[:, 1:].copy(), lag1, lag2)
+        strat.strat_data.insert(0, 'Date', dataset.Date)
+        self.config.start_ts = strat.strat_data.Date.iloc[0]
 
         # keep only data we are interested in
-        dataset.reset_index(inplace=True)
-        dataset.rename(columns={"index": 'Date'}, inplace=True)
-        timeserie = pl.convert.from_pandas(dataset[dataset.Date >= strat.strat_data['Date'][0]]) #self._config.start_ts
+        #dataset.reset_index(inplace=True)
+        #dataset.rename(columns={"index": 'Date'}, inplace=True)
+        timeserie = pl.convert.from_pandas(dataset[dataset.Date >= self.config.start_ts])
 
         if not self.generic:
             return_mat = dataset.copy()
@@ -169,7 +171,7 @@ class Backtester:
             self.return_mat = return_mat.loc[1:]
         else:
             self.return_mat = return_mat
-        return strat_data, timeserie
+        return pl.convert.from_pandas(strat.strat_data), timeserie
 
 
     def _generate_quotes(self, quote_data):
@@ -203,9 +205,9 @@ class Backtester:
                     self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])# * w
             )
             self._weight_by_pk[
-                (self._config.strategy_code, underlying_code, ts)
+                (self.config.strategy_code, underlying_code, ts)
             ] = Weight(
-                product_code=self._config.strategy_code,
+                product_code=self.config.strategy_code,
                 underlying_code=underlying_code,
                 ts=ts,
                 value=weight_given,
@@ -218,7 +220,7 @@ class Backtester:
         perf_ = 0.0
         for underlying_code in self._universe:
             # posi = self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])
-            key = (self._config.strategy_code, underlying_code, prev_ts)
+            key = (self.config.strategy_code, underlying_code, prev_ts)
 
             weight = self._weight_by_pk.get(
                 key
@@ -257,9 +259,9 @@ class Backtester:
         # compute the number of stock which will have a weight different from 0
         for ts in self._calendar:
             self._compute_weight(ts)
-            if ts == self._config.start_ts:
+            if ts == self.config.start_ts:
                 # yesterday's close
-                quote = Quote(close=self._config.basis, ts=ts - self._timedelta)
+                quote = Quote(close=self.config.basis, ts=ts - self._timedelta)
                 self._level_by_ts[ts - self._timedelta] = quote
             else:
                 perf = self._compute_perf(ts, prev_ts=prev_ts)
@@ -346,7 +348,7 @@ class Backtester:
         dfs = [weights_long, weights_short]
         return reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
 
-    def opti_weights(self, pos_ts, ts, type_strat_alloc='mv'):
+    def opti_weights(self, pos_ts, ts, type_strat_alloc=TypeOptiWeights.MIN_VARIANCE):
         # explain type
         returns = self.return_mat.copy()
         for type in [1, -1]:  # type will be used to select position > or < than 0
@@ -355,7 +357,9 @@ class Backtester:
             stocks_ = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
             ret = returns[returns.Date < ts][stocks_]
             alloc = opti(ret.T, type_strat_alloc, rf=0)
-            if self.opt_weights == TypeOptiWeights.MIN_VARIANCE:
+            if ts.date() <= self.config.start_ts and self.config.strategy_code != "momentum":
+                alloc.final_weight = np.zeros((len(stocks_),))
+            elif self.opt_weights == TypeOptiWeights.MIN_VARIANCE:
                 alloc.min_variance()
             elif self.opt_weights == TypeOptiWeights.MAX_SHARPE:
                 alloc.max_sharpe()
@@ -363,6 +367,7 @@ class Backtester:
                 alloc.risk_parity()
             else:
                 raise ValueError('strat must be: min_variance, max_sharpe or risk_parity')
+
             pos_ts.loc[:, stocks_] = pos_ts.loc[:, stocks_] * alloc.final_weight
         return pos_ts
 
