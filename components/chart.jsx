@@ -37,32 +37,16 @@ plugins: {
 },
 };
 
-const Chart = (chart) => {
-
-
-const fields = chart.chart.fields
-const tickers = chart.chart.tickers
-const startDate = chart.chart.startDate
-const endDate = chart.chart.endDate
-
-   const { data, error, isLoading } = useSWR(`/api?fields=${fields}&tickers=${tickers}&startdate=${startDate}&enddate=${endDate}`, fetcher);
-  
-   if (error) return <div>Failed to load</div>;
-   if (isLoading) return 
-  <div
-
-      >Loading...
-  </div>
- 
- ;
+const Chart = (data) => {
 
  if (data) {
-
-  console.log(data)
-  const APIfinalDataJsonClose = JSON.parse(data?.messages[0])
-  const APIfinalDataJsonDd = JSON.parse(data?.messages[1])
-  const APIfinalDataJsonMdd = JSON.parse(data?.messages[2])
-  const APIfinalDataListValues = JSON.parse(data?.messages[3])
+  const finalData = data.data
+  console.log(finalData)
+  console.log(finalData?.messages[0])
+  const APIfinalDataJsonClose = JSON.parse(finalData?.messages[0])
+  const APIfinalDataJsonDd = JSON.parse(finalData?.messages[1])
+  const APIfinalDataJsonMdd = JSON.parse(finalData?.messages[2])
+  const APIfinalDataListValues = JSON.parse(finalData?.messages[3])
   console.log(APIfinalDataJsonClose)
 
   const finalDataJsonClose = {

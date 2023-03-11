@@ -6,7 +6,7 @@ app.get('/api', (req, res) => {
     mode: 'text',
     pythonOptions: ['-u'], // get print results in real-time
     scriptPath: './Python/Bloomberg',
-    args: [req.query.fields, req.query.tickers, req.query.startdate, req.query.enddate, 'momentum'],
+    args: [req.query.fields, req.query.tickers, req.query.startdate, req.query.enddate, req.query.strategies],
   };
   console.log(options)
   //res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
