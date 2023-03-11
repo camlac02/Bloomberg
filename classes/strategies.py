@@ -3,10 +3,12 @@ import pandas as pd
 import sys
 import subprocess
 from enum import Enum
-
+from datetime import datetime
 # implement pip as a subprocess:
 subprocess.check_call([sys.executable, '-m', 'pip', 'install',
                        'datetime'])
+import datetime
+
 
 class TypeStrategy(Enum):
     momentum = 'momentum'
@@ -26,10 +28,19 @@ class Strategies:
         self.strat_data.index = data.index[lag2:]
 
     def data_strategies(self, data, lag1=None, lag2=None, other_data=None):
+        """
+
+        :param data:
+        :param lag1:
+        :param lag2:
+        :param other_data: change to market_cap
+        :return:
+        """
         if self.strategy == TypeStrategy.momentum:
             if lag1 is None or lag2 is None:
                 raise ValueError('lag1 or lag2 have to be set')
             self.momentum(data, lag1, lag2)
+
         elif self.strategy == TypeStrategy.mc:
             self.strat_data = data
 

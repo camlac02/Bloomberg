@@ -137,7 +137,7 @@ if __name__ == '__main__':
     opt.max_sharpe()
     print(opt.final_weight)
 
-    opt = OptimizeAllocation(returns=q, w=np.array([0.1, 0.4, 0.4, 0.1]), type_strat_alloc='eff')
+    opt = OptimizeAllocation(returns=q, w=np.array([0.1, 0.4, 0.4, 0.1]), type_strat_alloc='riskparity')
     print(opt.type_strat_alloc)
     opt.risk_parity()
     print(opt.final_weight)

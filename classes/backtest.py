@@ -25,6 +25,7 @@ class Config:
     start_ts: datetime
     end_ts: datetime
     strategy_code: str
+    name_index: str
     frequency: Frequency
     basis: int = 100
     timeserie: np.array = None
@@ -102,12 +103,19 @@ class Backtester:
         self.reshuffle = reshuffle
         self.compo = compo  # compo of indexes through time
 
-        self.compute_position2(pos=strat_data[::reshuffle])
+        self.compute_positions(pos=strat_data[::reshuffle], index_name=config.name_index)
         if self._config.start_ts != timeserie['Date'][0]:
             raise ValueError(
                 "starts_ts and the start date of the raw data have to be the same"
             )
         self._generate_quotes(timeserie)
+
+        # for hit ratio
+        self.hit_dict = {'hit': 0, 'hit_long': 0, 'hit_short': 0, 'total_position_taken': 0,
+                         'total_position_taken_long': 0, 'total_position_taken_short': 0,
+                         'mean_ret_from_misses': list(), 'mean_ret_from_hits': list()}
+        self.tuw = None  # time under water
+        self.dd = None  # drawdown
 
     def _generate_quotes(self, quote_data):
         """
@@ -159,7 +167,7 @@ class Backtester:
             key = (self._config.strategy_code, underlying_code, prev_ts)
 
             weight = self._weight_by_pk.get(
-                key,  # ts - self._timedelta * day_prev,
+                key
             )
             if weight is not None:
                 value = weight.value * posi
@@ -173,10 +181,13 @@ class Backtester:
                 )
 
                 if current_quote is not None and previous_quote is not None:
-                    perf_ += value * (current_quote.close / previous_quote.close - 1)
-                    # print(perf_)
-                    # if pd.isna(perf_.to_pandas().values[0][0]):
-                    #    pass
+                    rdt = (current_quote.close / previous_quote.close - 1)
+                    perf_ += value * rdt
+
+                    # update hit statistics
+                    value_int = value.to_numpy()[0][0].copy()
+                    if value_int != 0:
+                        self.update_hit(rdt, value_int)
                 else:
                     raise ValueError(
                         f"missing quote for {underlying_code} at {prev_ts - self._timedelta} "
@@ -185,6 +196,10 @@ class Backtester:
         return perf_
 
     def compute_levels(self) -> List[Quote]:
+        """
+        Compute the level of our portfolio at each timestamp
+        :return: level of ptf
+        """
         # compute the number of stock which will have a weight different from 0
         nb_stock_to_hold_per_period = self.position.with_column(pl.fold(0, lambda x, y: x + y, pl.all().exclude('Date'))
                                                                 .alias('sum_h'))
@@ -202,66 +217,67 @@ class Backtester:
                 self._level_by_ts[ts - self._timedelta] = quote
             prev_ts = ts
 
-        return list(self._level_by_ts.values())
+        self.update_hit(end=True)
+        ret = list(self._level_by_ts.values())
+        self.TuW(pd.DataFrame(ret.copy()))
+        return ret
 
-    def find_closest_closing_price(self, dico, ts, start=1, key=None) -> int:
+    def compute_positions(self, pos, index_name, q=0.25):
         """
-        f: dict
-        ts: timestamp of the current time
-        start: time from which we have to start looking from to find the closest value
-        key: key of the dico
 
-        We try to find the closest timestamp for a key in a dico which can contains quotes, weigths..
+        :param pos: strategy data reshuffled
+        :param index_name: CAC Index for exemple
+        :param q: part of long / short
+        :return: full df of positions
         """
-        for prev_day in range(start, 300):
-            if key is None:
-                if ts - self._timedelta * prev_day in dico:
-                    return prev_day
-            else:
-                day_prev_test = ts - self._timedelta * prev_day
-                if key[:-1] + tuple([day_prev_test]) in dico:
-                    return prev_day
-
-    def compute_position(self, pos, strat='momentum', q=0.25):
-        pos = pos.to_pandas()
-        nb_position = int((pos.shape[1] - 1) * q)
-        self.position = pd.DataFrame(np.zeros((pos.shape[0], pos.shape[1])), columns=pos.columns)
-        self.position.Date = pos['Date']
-        if strat == 'momentum':
-            long = np.sort(pos.iloc[:, 1:], axis=1)[:, -nb_position - 1]
-            short = np.sort(pos.iloc[:, 1:], axis=1)[:, nb_position - 2]
-
-            # define the weight to 2 when values are >= to the quantile at 75%
-            weights_long = pos.iloc[:, 1:].where(pos.iloc[:, 1:].values < long.reshape(-1, 1), 2)
-            weights_long = weights_long.where(weights_long.values == 2)
-
-            # define the weight to -1 when values are < to the quantile at 25%
-            weights_short = pos.iloc[:, 1:].where(pos.iloc[:, 1:].values > short.reshape(-1, 1), -1)
-            weights_short = weights_short.where(weights_short.values == -1)
-
-            dfs = [weights_long, weights_short]
-            self.position.iloc[:, 1:] = reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
-            self.position = pl.convert.from_pandas(self.position)
-
-    def compute_position2(self, pos, q=0.25):
         pos = pos.to_pandas()
         # select all the stock which have been in the index
-        my_list = self.compo.Compo.to_list()
-        flat_list = [item for sublist in my_list for item in sublist]
-        unique_list = list(set(flat_list))
+        my_list = list(self.compo.values())
+        unique_list = list(set(reduce(lambda x,y : x+y, my_list)))
+        #unique_list = list(set(flat_list))
 
         self.position = pd.DataFrame(np.zeros((pos.shape[0], len(unique_list) + 1)), columns=['Date'] + unique_list)
         self.position.Date = pos['Date']
+        datetime_next_loop = [key[0] for key in self.compo.keys()] # list datetime recompute compo
         for ts in pos['Date']:
             # compo at time ts
-            compo_ts = self.compo[self.compo.Date == ts].Compo.values[0]
+            ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts, datetime_next_loop) # date at which we take the compo
+            compo_ts = self.compo[(ts_for_dict, index_name[0])] # list compo at date ts
             # position we take in this univers
+
+            # stop there
             pos_ts = self.compute_position_ts(compo_ts, pos, ts, q=q)
             self.position.loc[self.position.Date == ts, compo_ts] = pos_ts
         self.position = pl.convert.from_pandas(self.position)
 
     @staticmethod
+    def find_closest_datetime(timestamp, datetimes):
+        """
+        Find the closest datetime that comes before the given timestamp in a list of datetimes.
+        Basically find the ts at which the last compo of index has been take out bloomberg
+        """
+        closest = None
+        old = None
+        datetime_next_loop = datetimes.copy()
+        for dt in datetimes:
+            if dt <= timestamp:
+                closest = dt
+                if old is not None:
+                    datetime_next_loop.remove(old)
+                old = dt
+                continue
+        return closest, datetime_next_loop
+
+    @staticmethod
     def compute_position_ts(compo, pos, ts, q=0.25):
+        """
+
+        :param compo: compo of index
+        :param pos: strategy data reshuffled
+        :param ts: current time
+        :param q: part of long / short
+        :return: position for 1 timestamp
+        """
         nb_position = int((len(compo) - 1) * q)
         pos_ts = pos[pos.Date == ts]
         long = np.sort(pos_ts.iloc[:, 1:], axis=1)[:, -nb_position - 1]
@@ -277,3 +293,57 @@ class Backtester:
 
         dfs = [weights_long, weights_short]
         return reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
+
+    def update_hit(self, returns=None, val=None, end=False):
+        '''
+
+        :param returns: curr_quote / prev_quote - 1
+        :param val: weight
+        :param end: bool
+        :return: compute hit scores of the strategy
+        '''
+        if end:
+            for key in self.hit_dict.keys():
+                x = self.hit_dict[key]
+                if isinstance(x, list):
+                    self.hit_dict[key] = np.mean(x)
+            return
+        returns = returns.to_numpy()[0][0].copy()
+        if val > 0:
+            id = returns > 0
+            self.hit_dict['hit_long'] += id
+            self.hit_dict['total_position_taken_long'] += 1
+
+            # moyenne des returns lors d'une pos longue
+            self.hit_dict['mean_ret_from_hits'].append(returns * id)
+            self.hit_dict['mean_ret_from_misses'].append(returns * (1-id))
+        elif val < 0:
+            id = returns < 0
+            self.hit_dict['hit_short'] += id
+            self.hit_dict['total_position_taken_short'] += 1
+
+            self.hit_dict['mean_ret_from_hits'].append(-returns * id)
+            self.hit_dict['mean_ret_from_misses'].append(-returns * (1 - id))
+
+        if np.sign(val) == np.sign(returns):
+            self.hit_dict['hit'] += 1
+
+        self.hit_dict['total_position_taken'] += 1
+
+    def TuW(self, pnl: pd.DataFrame):
+        """
+
+        :param pnl: series of pnl
+        : compute Time under water and drawdowns using high-watermarks
+        """
+        pnl.set_index(pnl.ts, inplace=True)
+        pnl.drop('ts', inplace=True, axis=1)
+        pnl['hwm'] = pnl['close'].expanding().max()  # max from the beginning of the quotations
+        df1 = pnl.groupby('hwm').min().reset_index()
+        df1.index = pnl['hwm'].drop_duplicates(keep='first').index
+        df1.columns = ['hwm', 'min']
+        df1 = df1[df1['hwm'] > df1['min']]
+        self.dd = 1 - df1['min'] / df1['hwm']
+        tuw = (df1.index[1:] - df1.index[:-1])
+        self.tuw = pd.Series(tuw, index=df1.index[:-1])
+

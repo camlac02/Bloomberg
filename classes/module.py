@@ -1,5 +1,7 @@
 import pandas as pd
 import blpapi
+import datetime as dt
+import numpy as np
 
 
 class BLP():
@@ -283,7 +285,7 @@ class BLP():
 
         return dict_Security_Fields if len(strFields) > 1 else dict_Security_Fields[field]
 
-    def bds(self, strSecurity, strFields, strOverrideField='', strOverrideValue=''):
+    def bds(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate=''):
 
         """
             Summary:
@@ -396,6 +398,32 @@ class BLP():
             dict_Security_Fields[field] = globals()['dict_' + field]# pd.DataFrame.from_dict(globals()['dict_' + field], orient="index")
 
         return dict_Security_Fields if len(strFields) > 1 else dict_Security_Fields[field]
+
+    def compo_per_date_old(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate='', rebal_index=52):
+        dico_compo = {}
+        start = strOverrideValue
+        for security in strSecurity:
+            strOverrideValue = start
+            while strOverrideValue < strEndDate:
+                date_ts = dt.datetime.strftime(strOverrideValue, "%Y%m%d")
+                dico_compo[(strOverrideValue, security)] = [self.bds(strSecurity, strFields, strOverrideField=strOverrideField,
+                                              strOverrideValue=date_ts, strEndDate=strEndDate)[strFields[-1]][security]]
+                strOverrideValue += dt.timedelta(weeks=rebal_index)
+        return dico_compo
+
+    def compo_per_date(self, strSecurity, strFields, strOverrideField='', strOverrideValue='', strEndDate='',
+                           rebal_index=52):
+        list_compo = np.array(self.bds(strSecurity, strFields, strOverrideField=strOverrideField, strOverrideValue=dt.datetime.strftime(strOverrideValue, "%Y%m%d"), strEndDate=strEndDate)[strFields[-1]][
+                strSecurity[0]])
+        while strOverrideValue < strEndDate:
+            strOverrideValue += dt.timedelta(weeks=rebal_index)
+            date_ts = dt.datetime.strftime(strOverrideValue, "%Y%m%d")
+            list_compo.loc[date_ts] = self.bds(strSecurity, strFields, strOverrideField=strOverrideField,
+                                                    strOverrideValue=date_ts, strEndDate=strEndDate)[strFields[-1]][
+                strSecurity[0]]
+
+
+        return list_compo
         """
         dict_Security_Fields = {}
         for field in strFields:

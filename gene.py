@@ -9,6 +9,10 @@ class Simulate:
         self.generic_data = None
 
     def simulation_return(self):
+        '''
+        Travailler l'explication
+        :return:
+        '''
         # mean and return of true data
         ret_centered = self.ret.copy() - self.ret.mean(axis=0)
 

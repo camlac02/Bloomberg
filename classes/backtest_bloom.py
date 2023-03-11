@@ -101,7 +101,7 @@ class Backtester:
 
     def __init__(self, config: Config, data, compo, reshuffle=1, generic=False, lag1=None, lag2=None, strat='min_variance'):
         self._config = config
-        self.generic=generic
+        self.generic = generic
         strat_data, timeserie = self._data_manipulation(data, config.strategy_code, (lag1, lag2))
         self._calendar = config.calendar(timeserie[::reshuffle])  # create calendar
         self._universe = config.universe
@@ -160,7 +160,7 @@ class Backtester:
         # keep only data we are interested in
         dataset.reset_index(inplace=True)
         dataset.rename(columns={"index": 'Date'}, inplace=True)
-        timeserie = pl.convert.from_pandas(dataset[dataset.Date >= strat.strat_data['Date'][0]])
+        timeserie = pl.convert.from_pandas(dataset[dataset.Date >= strat.strat_data['Date'][0]]) #self._config.start_ts
 
         if not self.generic:
             return_mat = dataset.copy()
@@ -347,6 +347,7 @@ class Backtester:
         return reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
 
     def opti_weights(self, pos_ts, ts, type_strat_alloc='mv'):
+        # explain type
         returns = self.return_mat.copy()
         for type in [1, -1]:  # type will be used to select position > or < than 0
 
