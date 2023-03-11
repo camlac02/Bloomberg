@@ -1,5 +1,7 @@
 # API Bloomberg
 
+pip install --index-url=https://bcms.bloomberg.com/pip/simple blpapi
+
 The last update files:
 
 - gene: generate a random data set. Used to test the stability of the strategies.
