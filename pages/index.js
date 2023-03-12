@@ -46,11 +46,12 @@ export default function Home() {
     tickers: "",
     startDate: "",
     endDate: "",
-    strategies: ""
+    strategies: "",
+    options: ""
   });
 
   const [finalChart, setFinalChart] = useState(false);
-  const { data, error, mutate, isLoading } = useSWR(shouldFetch ? `/api?fields=${chart.fields}&tickers=${chart.tickers}&startdate=${moment(chart.startDate).format()}&enddate=${moment(chart.endDate).format()}&strategies=${chart.strategies}`: null, fetcher);
+  const { data, error, mutate, isLoading } = useSWR(shouldFetch ? `/api?fields=${chart.fields}&tickers=${chart.tickers}&startdate=${moment(chart.startDate).format()}&enddate=${moment(chart.endDate).format()}&strategies=${chart.strategies}&options=${chart.options}`: null, fetcher);
 
   const triggerPython = () => {
     setShouldFetch(true)
@@ -69,20 +70,6 @@ export default function Home() {
   const handleClick = () => {
     setFinalChart(true)
   };
-
-  const options = {
-    responsive: true,
-    plugins: {
-        legend: {
-        position: 'top',
-        },
-        title: {
-        display: true,
-        text: 'Chart.js Line Chart',
-        },
-    },
-    };
-
 
   return (
     <>
@@ -103,51 +90,60 @@ export default function Home() {
   <form onSubmit={handleSubmit} className="space-y-5">
     <div className="grid grid-cols-12 gap-5">
       <div className="col-span-12">
-        <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500">Fields</label>
-        <input type="text" id="example9" className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="PX_LAST" value={chart.fields} onChange={(e) => setChart({...chart, fields: e.target.value})} />
+        <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']">Fields</label>
+        <input type="text" id="example9" required className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="PX_LAST" value={chart.fields} onChange={(e) => setChart({...chart, fields: e.target.value})} />
       </div>
       <div className="col-span-12">
-        <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500">Tickers</label>
+        <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']">Tickers</label>
         <input type="text" id="example9" className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="CAC Index" value={chart.tickers} onChange={(e) => setChart({...chart, tickers: e.target.value})}/>
       </div>
       <div className="col-span-6">
-        <label htmlFor="example7" className="mb-1 block text-sm font-medium text-gray-500">Date de début</label>
+        <label htmlFor="example7" className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']">Date de début</label>
         <DatePicker
       showIcon
       dateFormat="dd-MM-yyyy"
       locale="fr"
       selected={chart.startDate}
+      maxDate={new Date(new Date().setDate(new Date().getDate() - 3))}
       onChange={(date) => setChart({...chart, startDate: date})}
+    
       className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
     />
       </div>
       <div className="col-span-6">
-        <label htmlFor="example8" className="mb-1 block text-sm font-medium text-gray-500">Date de fin</label>
+        <label htmlFor="example8" className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']">Date de fin</label>
         <DatePicker
       showIcon
       dateFormat="dd-MM-yyyy"
       locale="fr"
       selected={chart.endDate}
+      maxDate={new Date(new Date().setDate(new Date().getDate() - 2))}
       onChange={(date) => setChart({...chart, endDate: date})}
-    
+  
       className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
     />
       </div>
-    <div className="col-span-12 mb-4">
-      <div className="mx-auto max-w-xs">
-        <label htmlFor="example3" className="mb-1 block text-sm font-medium text-gray-500">Stratégie</label>
+      <div className="col-span-6">
+      <label htmlFor="example3" className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']">Stratégie</label>
   <select id="example3" className="block w-full h-8 rounded-md border-gray-300 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50"
   onChange={(e) => setChart({...chart, strategies: e.target.value})}
   >
+    <option value="">Sélectionner une stratégie</option>
     <option value="btm">Book-to-Market</option>
     <option value="mc">Market Capitalization</option>
     <option value="momentum">Momentum</option>
   </select>
-</div>
-</div>
-      <div className="col-span-12 text-center my-6">
-        <button onClick={triggerPython} type="button" className="rounded-lg border border-primary-500 bg-primary-500 px-5 py-2.5 text-center text-sm font-medium shadow-sm transition-all hover:border-primary-700 hover:bg-primary-700 focus:ring focus:ring-primary-200 disabled:cursor-not-allowed disabled:border-primary-300 disabled:bg-primary-300">VALIDER</button>
+      </div><div className="col-span-6">
+      <label htmlFor="example9" className="mb-1 block text-sm font-medium text-gray-500">Options</label>
+        <input type="text" id="example9" className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" placeholder="Other_data LAG1 LAG2" value={chart.options} onChange={(e) => setChart({...chart, options: e.target.value})}/>
       </div>
+</div>
+
+      <div className="col-span-12 text-center py-14">
+      {chart.fields == "" || chart.tickers == "" || chart.startDate == "" || chart.endDate == "" || chart.strategies == "" ?  
+<><button type="button" disabled className="rounded-lg border border-gray-700 bg-gray-700 px-5 py-2.5 text-center text-sm font-medium text-white shadow-sm transition-all hover:border-gray-900 hover:bg-gray-900 focus:ring focus:ring-gray-200 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300">VALIDER</button><p className="mt-4 text-red-500">Tous les champs* sont obligatoires</p></> :
+<button onClick={triggerPython} type="button" disabled={isLoading} className="rounded-lg border border-gray-700 bg-gray-700 px-5 py-2.5 text-center text-sm font-medium text-white shadow-sm transition-all hover:border-gray-900 hover:bg-gray-900 focus:ring focus:ring-gray-200 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-300">VALIDER</button>}
+
     </div>
   </form>
 </div>
