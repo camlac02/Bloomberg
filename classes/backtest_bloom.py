@@ -27,6 +27,7 @@ class TypeOptiWeights(Enum):
     MAX_SHARPE = 'max_sharpe'
     RISK_PARITY = 'risk_parity'
 
+
 @dataclass
 class Config:
     universe: List[str]
@@ -99,22 +100,23 @@ class Backtester:
 
     """
 
-    def __init__(self, config: Config, data, compo, reshuffle=1, generic=False, lag1=None, lag2=None, strat='min_variance'):
+    def __init__(self, config: Config, data, compo, intReshuffle=1, boolGeneric=False, lag1=None, lag2=None,
+                 strat='min_variance'):
         self.config = config
-        self.generic = generic
+        self.boolGeneric = boolGeneric
         strat_data, timeserie = self._data_manipulation(data, config.strategy_code, (lag1, lag2))
-        self._calendar = config.calendar(timeserie[::reshuffle])  # create calendar
+        self._calendar = config.calendar(timeserie[::intReshuffle])  # create calendar
         self._universe = config.universe
         self._timedelta = config.timedelta
 
         self._quote_by_pk = dict()
         self._weight_by_pk = dict()
         self._level_by_ts = dict()
-        self.reshuffle = reshuffle
-        self.compo = compo  # compo of indexes through time
+        self.intReshuffle = intReshuffle
+        self.dictTickersThroughTime = compo  # compo of indexes through time
 
-        self.opt_weights = strat
-        self.compute_positions(pos=strat_data[::reshuffle], index_name=config.name_index)
+        self.strOptiType = strat
+        self.compute_positions(pos=strat_data[::intReshuffle], index_name=config.name_index)
         if self.config.start_ts != timeserie['Date'][0]:
             raise ValueError(
                 "starts_ts and the start date of the raw data have to be the same"
@@ -122,13 +124,11 @@ class Backtester:
         self._generate_quotes(timeserie)
 
         # for hit ratio
-        self.hit_dict = {'hit': 0, 'hit_long': 0, 'hit_short': 0, 'total_position_taken': 0,
-                         'total_position_taken_long': 0, 'total_position_taken_short': 0,
-                         'mean_ret_from_misses': list(), 'mean_ret_from_hits': list()}
+        self.dictHitStat = {'hit': 0, 'hit_long': 0, 'hit_short': 0, 'total_position_taken': 0,
+                            'total_position_taken_long': 0, 'total_position_taken_short': 0,
+                            'mean_ret_from_misses': list(), 'mean_ret_from_hits': list()}
         self.tuw = None  # time under water
         self.dd = None  # drawdown
-
-
 
     def _data_manipulation(self, dataset, stypestrat, lags=(None, None)):
         """
@@ -141,13 +141,14 @@ class Backtester:
         return_mat = dataset.copy()
         return_mat.iloc[:, 1:] = return_mat.iloc[:, 1:].pct_change()
         return_mat.Date = return_mat.Date.astype('datetime64')
-        self.return_mat = return_mat.loc[1:]
+        self.df_returns_mat = return_mat.loc[1:]
 
-        if self.generic:
+        if self.boolGeneric:
             date_col = dataset.Date.to_numpy()
-            sim = Simulate(self.return_mat.copy().iloc[:, 1:].to_numpy())
+            sim = Simulate(self.df_returns_mat.copy().iloc[:, 1:].to_numpy())
             # dataset.iloc[0, 1:].to_numpy().reshape(-1, 1)
-            sim.compute_sim_dataset(dataset.iloc[0, 1:].ffill().to_numpy().reshape(-1, 1), idx=dataset.index, col=dataset.columns[1:])
+            sim.compute_sim_dataset(dataset.iloc[0, 1:].ffill().to_numpy().reshape(-1, 1), idx=dataset.index,
+                                    col=dataset.columns[1:])
             dataset = sim.generic_data
             return_mat = pd.DataFrame(sim.correlated_returns_sim, columns=dataset.columns)
             dataset.insert(0, value=date_col, column='Date')
@@ -160,19 +161,18 @@ class Backtester:
         self.config.start_ts = strat.strat_data.Date.iloc[0]
 
         # keep only data we are interested in
-        #dataset.reset_index(inplace=True)
-        #dataset.rename(columns={"index": 'Date'}, inplace=True)
+        # dataset.reset_index(inplace=True)
+        # dataset.rename(columns={"index": 'Date'}, inplace=True)
         timeserie = pl.convert.from_pandas(dataset[dataset.Date >= self.config.start_ts])
 
-        if not self.generic:
+        if not self.boolGeneric:
             return_mat = dataset.copy()
             return_mat.iloc[:, 1:] = return_mat.iloc[:, 1:].pct_change()
             return_mat.Date = return_mat.Date.astype('datetime64')
-            self.return_mat = return_mat.loc[1:]
+            self.df_returns_mat = return_mat.loc[1:]
         else:
-            self.return_mat = return_mat
+            self.df_returns_mat = return_mat
         return pl.convert.from_pandas(strat.strat_data), timeserie
-
 
     def _generate_quotes(self, quote_data):
         """
@@ -202,7 +202,7 @@ class Backtester:
 
         for underlying_code in self._universe:
             weight_given = (
-                    self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])# * w
+                self.polarsdfPosition.filter((pl.col('Date') == ts)).select([str(underlying_code)])  # * w
             )
             self._weight_by_pk[
                 (self.config.strategy_code, underlying_code, ts)
@@ -219,14 +219,14 @@ class Backtester:
         """
         perf_ = 0.0
         for underlying_code in self._universe:
-            # posi = self.position.filter((pl.col('Date') == ts)).select([str(underlying_code)])
+            # posi = self.polarsdfPosition.filter((pl.col('Date') == ts)).select([str(underlying_code)])
             key = (self.config.strategy_code, underlying_code, prev_ts)
 
             weight = self._weight_by_pk.get(
                 key
             )
             if weight is not None:
-                #value = weight.value * posi
+                # value = weight.value * posi
                 current_quote = self._quote_by_pk.get(
                     (underlying_code, ts - self._timedelta)
                 )
@@ -287,22 +287,24 @@ class Backtester:
         """
         pos = pos.to_pandas()
         # select all the stock which have been in the index
-        my_list = list(self.compo.values())
-        unique_list = list(set(reduce(lambda x, y: x + y, my_list)))
+        my_list = list(self.dictTickersThroughTime.values())
+        listAllStockHistory = list(set(reduce(lambda x, y: x + y, my_list)))
 
-        self.position = pd.DataFrame(np.zeros((pos.shape[0], len(unique_list) + 1)), columns=['Date'] + unique_list)
-        self.position.Date = pos['Date']
-        datetime_next_loop = [key[0] for key in self.compo.keys()]  # list datetime recompute compo
+        self.polarsdfPosition = pd.DataFrame(np.zeros((pos.shape[0], len(listAllStockHistory) + 1)),
+                                             columns=['Date'] + listAllStockHistory)
+        self.polarsdfPosition.Date = pos['Date']
+        datetime_next_loop = [key[0] for key in self.dictTickersThroughTime.keys()]  # list datetime recompute compo
         for ts in pos['Date']:
             # compo at time ts
-            ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts, datetime_next_loop)  # date at which we take the compo
-            compo_ts = self.compo[(ts_for_dict, index_name[0])]  # list compo at date ts
+            ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts,
+                                                                         datetime_next_loop)  # date at which we take the compo
+            compo_ts = self.dictTickersThroughTime[(ts_for_dict, index_name[0])]  # list compo at date ts
             # position we take in this univers
             pos_ts = self.compute_position_ts(compo_ts, pos, ts, q=q)
             pos_ts_opt = self.opti_weights(pos_ts.copy(), ts)
-            self.position.loc[self.position.Date == ts, compo_ts] = pos_ts_opt[compo_ts]
+            self.polarsdfPosition.loc[self.polarsdfPosition.Date == ts, compo_ts] = pos_ts_opt[compo_ts]
 
-        self.position = pl.convert.from_pandas(self.position)
+        self.polars_dfPosition = pl.convert.from_pandas(self.polarsdfPosition)
 
     @staticmethod
     def find_closest_datetime(timestamp, datetimes):
@@ -350,25 +352,25 @@ class Backtester:
 
     def opti_weights(self, pos_ts, ts, type_strat_alloc=TypeOptiWeights.MIN_VARIANCE):
         # explain type
-        returns = self.return_mat.copy()
+        returns = self.df_returns_mat.copy()
         for type in [1, -1]:  # type will be used to select position > or < than 0
 
             # keep only passed date and stock we go long or short on
-            stocks_ = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
-            ret = returns[returns.Date < ts][stocks_]
-            alloc = opti(ret.T, type_strat_alloc, rf=0)
-            if ts.date() <= self.config.start_ts and self.config.strategy_code != "momentum":
-                alloc.final_weight = np.zeros((len(stocks_),))
-            elif self.opt_weights == TypeOptiWeights.MIN_VARIANCE:
+            listStocks = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
+            dfRet = returns[returns.Date < ts][listStocks]
+            alloc = opti(dfRet.T, type_strat_alloc, rf=0)
+            if ts.date() <= self.config.start_ts and self.config.strategy_code != TypeStrategy.momentum.value:
+                alloc.final_weight = np.zeros((len(listStocks),))
+            elif self.strOptiType == TypeOptiWeights.MIN_VARIANCE:
                 alloc.min_variance()
-            elif self.opt_weights == TypeOptiWeights.MAX_SHARPE:
+            elif self.strOptiType == TypeOptiWeights.MAX_SHARPE:
                 alloc.max_sharpe()
-            elif self.opt_weights == TypeOptiWeights.RISK_PARITY:
+            elif self.strOptiType == TypeOptiWeights.RISK_PARITY:
                 alloc.risk_parity()
             else:
                 raise ValueError('strat must be: min_variance, max_sharpe or risk_parity')
 
-            pos_ts.loc[:, stocks_] = pos_ts.loc[:, stocks_] * alloc.final_weight
+            pos_ts.loc[:, listStocks] = pos_ts.loc[:, listStocks] * alloc.final_weight
         return pos_ts
 
     def update_hit(self, returns=None, val=None, end=False):
@@ -380,32 +382,32 @@ class Backtester:
         :return: compute hit scores of the strategy
         '''
         if end:
-            for key in self.hit_dict.keys():
-                x = self.hit_dict[key]
+            for key in self.dictHitStat.keys():
+                x = self.dictHitStat[key]
                 if isinstance(x, list):
-                    self.hit_dict[key] = np.mean(x)
+                    self.dictHitStat[key] = np.mean(x)
             return
         returns = returns.to_numpy()[0][0].copy()
         if val > 0:
             id = returns > 0
-            self.hit_dict['hit_long'] += id
-            self.hit_dict['total_position_taken_long'] += 1
+            self.dictHitStat['hit_long'] += id
+            self.dictHitStat['total_position_taken_long'] += 1
 
             # moyenne des returns lors d'une pos longue
-            self.hit_dict['mean_ret_from_hits'].append(returns * id)
-            self.hit_dict['mean_ret_from_misses'].append(returns * (1-id))
+            self.dictHitStat['mean_ret_from_hits'].append(returns * id)
+            self.dictHitStat['mean_ret_from_misses'].append(returns * (1 - id))
         elif val < 0:
             id = returns < 0
-            self.hit_dict['hit_short'] += id
-            self.hit_dict['total_position_taken_short'] += 1
+            self.dictHitStat['hit_short'] += id
+            self.dictHitStat['total_position_taken_short'] += 1
 
-            self.hit_dict['mean_ret_from_hits'].append(-returns * id)
-            self.hit_dict['mean_ret_from_misses'].append(-returns * (1 - id))
+            self.dictHitStat['mean_ret_from_hits'].append(-returns * id)
+            self.dictHitStat['mean_ret_from_misses'].append(-returns * (1 - id))
 
         if np.sign(val) == np.sign(returns):
-            self.hit_dict['hit'] += 1
+            self.dictHitStat['hit'] += 1
 
-        self.hit_dict['total_position_taken'] += 1
+        self.dictHitStat['total_position_taken'] += 1
 
     def TuW(self, pnl: pd.DataFrame):
         """
@@ -423,4 +425,3 @@ class Backtester:
         self.dd = 1 - df1['min'] / df1['hwm']
         tuw = (df1.index[1:] - df1.index[:-1])
         self.tuw = pd.Series(tuw, index=df1.index[:-1])
-

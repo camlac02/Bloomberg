@@ -29,15 +29,16 @@ if __name__ == '__main__':
     startDate = dt.datetime(2015, 1, 1)
     endDate = dt.datetime(2023, 2, 10)
 
-    bloom2 = blp.compo_per_date_old(strSecurity=tickers, strFields=strFields,
-                     strOverrideField="END_DATE_OVERRIDE", strOverrideValue=startDate, strEndDate=endDate)
-    idx_df = pd.DataFrame(bloom2).T
+    dictCompoIndex = blp.compo_per_date_old(strSecurity=tickers, strFields=strFields,
+                                            strOverrideField="END_DATE_OVERRIDE", strOverrideValue=startDate,
+                                            strEndDate=endDate)
+    idx_df = pd.DataFrame(dictCompoIndex).T
     unique_idx = sorted(list(set(idx_df.sum()[0])))
     list_index = list(map(lambda x: x + " Equity", unique_idx))
 
-    bloom = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in bloom2.items()}
-    data = blp.bdh(list_index, ['PX_LAST'], startDate, endDate) # CUR_MKT_CAP # TOT_COMMON_EQY # PX_LAST
-
+    dictTickersTime = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in
+                   dictCompoIndex.items()}
+    dfHistory = blp.bdh(list_index, ['PX_LAST'], startDate, endDate)  # CUR_MKT_CAP # TOT_COMMON_EQY # PX_LAST
 
     configuration = Config(universe=list_index,
                            start_ts=startDate,
@@ -46,10 +47,10 @@ if __name__ == '__main__':
                            name_index=tickers,
                            frequency=Frequency.DAILY)
 
-    backtest = Backtester(config=configuration, data=data,
-                          compo=bloom,
-                          reshuffle=10,
-                          lag1=30, lag2=200, generic=False, strat=TypeOptiWeights.MIN_VARIANCE)
+    backtest = Backtester(config=configuration, data=dfHistory,
+                          compo=dictTickersTime,
+                          intReshuffle=10,
+                          lag1=30, lag2=200, boolGeneric=False, strat=TypeOptiWeights.MIN_VARIANCE)
 
     back = backtest.compute_levels()
     backtest_res = pd.DataFrame(back)
@@ -61,8 +62,9 @@ if __name__ == '__main__':
     plt.legend()
 
     import yfinance as yf
-    cac =yf.download('^FCHI', start=backtest.config.start_ts, end=backtest.config.end_ts).Close
-    cac = 100*cac/cac.iloc[0]
+
+    cac = yf.download('^FCHI', start=backtest.config.start_ts, end=backtest.config.end_ts).Close
+    cac = 100 * cac / cac.iloc[0]
     plt.plot(cac)
     plt.show()
 
@@ -81,8 +83,8 @@ if __name__ == '__main__':
     # Historical VaR in percentage: -0.86 means that the ptf went down by 86%
     level_VaR = 0.95
     ret = backtest_res.close.pct_change().dropna().sort_values().reset_index(drop=True)
-    hist_level_index = int((1-level_VaR) * ret.shape[0])
-    historical_VaR = round(ret[hist_level_index-1], 2)
+    hist_level_index = int((1 - level_VaR) * ret.shape[0])
+    historical_VaR = round(ret[hist_level_index - 1], 2)
 
     #
 
@@ -96,5 +98,5 @@ if __name__ == '__main__':
     tuw = backtest.tuw
     dd = backtest.dd
     #
-    #s = blp.BDS("CAC Index", "INDX_MWEIGHT_HIST")
+    # s = blp.BDS("CAC Index", "INDX_MWEIGHT_HIST")
     # blp.closeSession()
