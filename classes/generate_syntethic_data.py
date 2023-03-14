@@ -6,38 +6,38 @@ class Simulate:
     def __init__(self, returns):
         self.ret = returns
         self.ret[np.isnan(self.ret)] = 0
-        self.correlated_returns_sim = None
-        self.generic_data = None
+        self.arr_correlated_returns_sim = None
+        self.dfGenericData = None
 
     def simulation_return(self):
         # mean and return of true data
-        mu, std = np.nanmean(self.ret, axis=0), np.nanstd(self.ret, axis=0)
+        int_mu, int_std = np.nanmean(self.ret, axis=0), np.nanstd(self.ret, axis=0)
         # correlation between assets
 
-        corr = np.corrcoef(self.ret, rowvar=False)
-        cholesky = np.linalg.cholesky(corr)
+        arr_corr = np.corrcoef(self.ret, rowvar=False)
+        arr_cholesky = np.linalg.cholesky(arr_corr)
 
         # uncorrelated variables
-        z_stats = np.random.normal(size=(self.ret.shape[0], self.ret.shape[1]))
+        arr_z_stats = np.random.normal(size=(self.ret.shape[0], self.ret.shape[1]))
 
         # correlated them using cholesky decomposition
-        correlated_z_stats = (cholesky @ z_stats.T).T
+        arr_correlated_z_stats = (arr_cholesky @ arr_z_stats.T).T
 
         # retrieve correlated returns
-        correlated_returns_sim = mu + correlated_z_stats * std
+        arr_correlated_returns_sim = int_mu + arr_correlated_z_stats * int_std
         # correlated_returns_sim[0, :] = np.zeros((self.ret.shape[1]))
-        correlated_returns_sim = np.vstack([np.zeros(correlated_returns_sim.shape[1]), correlated_returns_sim])
-        return correlated_returns_sim
+        arr_correlated_returns_sim = np.vstack([np.zeros(arr_correlated_returns_sim.shape[1]), arr_correlated_returns_sim])
+        return arr_correlated_returns_sim
 
     def recover_dataset(self, S0):
-        self.correlated_returns_sim = self.simulation_return()
-        self.generic_data = S0.T * np.cumprod(1 + self.correlated_returns_sim, axis=0)
+        self.arr_correlated_returns_sim = self.simulation_return()
+        self.dfGenericData = S0.T * np.cumprod(1 + self.arr_correlated_returns_sim, axis=0)
 
     def compute_sim_dataset(self, S0, idx, col):
         self.recover_dataset(S0)
-        self.generic_data = pd.DataFrame(self.generic_data)
-        self.generic_data.columns = col
-        self.generic_data.index = idx
+        self.dfGenericData = pd.DataFrame(self.dfGenericData)
+        self.dfGenericData.columns = col
+        self.dfGenericData.index = idx
 
     @staticmethod
     def cholesky_decomposition(corr):
