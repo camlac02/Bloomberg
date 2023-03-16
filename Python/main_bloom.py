@@ -38,7 +38,8 @@ if __name__ == '__main__':
     bloom = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in bloom2.items()}
     data = blp.bdh(list_index, ['PX_LAST'], startDate, endDate) # CUR_MKT_CAP # TOT_COMMON_EQY # PX_LAST
 
-
+    print(type(startDate))
+    print(type(endDate))
     configuration = Config(universe=list_index,
                            start_ts=startDate,
                            end_ts=endDate,
