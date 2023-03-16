@@ -101,9 +101,10 @@ class Backtester:
     """
 
     def __init__(self, config: Config, data, compo, intReshuffle=1, boolGeneric=False, lag1=None, lag2=None,
-                 strat='min_variance'):
+                 strat='min_variance', other_data=None):
         self.config = config
         self.boolGeneric = boolGeneric
+        self.other_data = other_data
         strat_data, timeserie = self._data_manipulation(data, config.strategy_code, (lag1, lag2))
         self._calendar = config.calendar(timeserie[::intReshuffle])  # create calendar
         self._universe = config.universe
@@ -112,7 +113,6 @@ class Backtester:
         self._quote_by_pk = dict()
         self._weight_by_pk = dict()
         self._level_by_ts = dict()
-        self.intReshuffle = intReshuffle
         self.dictTickersThroughTime = compo  # compo of indexes through time
 
         self.strOptiType = strat
@@ -156,7 +156,7 @@ class Backtester:
 
         strat = Strategies(stypestrat)
         lag1, lag2 = lags
-        strat.data_strategies(dataset.iloc[:, 1:].copy(), lag1, lag2)
+        strat.data_strategies(dataset.iloc[:, 1:].copy(), lag1, lag2, other_data=self.other_data.copy())
         strat.strat_data.insert(0, 'Date', dataset.Date)
         self.config.start_ts = strat.strat_data.Date.iloc[0]
 
@@ -304,7 +304,7 @@ class Backtester:
             pos_ts_opt = self.opti_weights(pos_ts.copy(), ts)
             self.polarsdfPosition.loc[self.polarsdfPosition.Date == ts, compo_ts] = pos_ts_opt[compo_ts]
 
-        self.polars_dfPosition = pl.convert.from_pandas(self.polarsdfPosition)
+        self.polarsdfPosition = pl.convert.from_pandas(self.polarsdfPosition)
 
     @staticmethod
     def find_closest_datetime(timestamp, datetimes):
@@ -351,6 +351,13 @@ class Backtester:
         return reduce(lambda dfA, dfB: dfB.combine_first(dfA), dfs).fillna(0)
 
     def opti_weights(self, pos_ts, ts, type_strat_alloc=TypeOptiWeights.MIN_VARIANCE):
+        """
+
+        :param pos_ts: zeros row at date ts
+        :param ts: date
+        :param type_strat_alloc: type opti
+        :return: pos at date ts
+        """
         # explain type
         returns = self.df_returns_mat.copy()
         for type in [1, -1]:  # type will be used to select position > or < than 0

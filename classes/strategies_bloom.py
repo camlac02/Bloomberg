@@ -28,6 +28,14 @@ class Strategies:
         self.strat_data.index = data.index[lag2:]
 
     def data_strategies(self, data, lag1=None, lag2=None, other_data=None):
+        """
+
+        :param data: returns
+        :param lag1: for mom
+        :param lag2: for mom
+        :param other_data: for btc
+        :return:
+        """
         if self.strategy == TypeStrategy.momentum.value:
             if lag1 is None or lag2 is None:
                 raise ValueError('lag1 or lag2 have to be set')
@@ -38,7 +46,8 @@ class Strategies:
         elif self.strategy == TypeStrategy.btm.value:
             if other_data is None:
                 raise ValueError('other_data have to be define as mkt_cap')
-            self.strat_data = data / other_data  # book / mkt_cap
+            other_data.reset_index(inplace=True, drop=True)
+            self.strat_data = data.div(other_data)  # book / mkt_cap
         else:
             raise ValueError('strategy name is not adapted')
 
