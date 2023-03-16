@@ -14,6 +14,7 @@ from classes.strategies_bloom import Strategies, TypeStrategy
 import polars as pl
 
 if __name__ == '__main__':
+    type_strat = TypeStrategy.btm.value
     DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     blp = BLP(DATE, SECURITY, SECURITY_DATA, FIELD_DATA)
     strFields = ["PX_LAST", "INDX_MWEIGHT_HIST"]
     tickers = ["CAC Index"]
-    startDate = dt.datetime(2015, 1, 1)
+    startDate = dt.datetime(2020, 1, 2)
     endDate = dt.datetime(2023, 2, 10)
 
     dictCompoIndex = blp.compo_per_date_old(strSecurity=tickers, strFields=strFields,
@@ -38,19 +39,23 @@ if __name__ == '__main__':
 
     dictTickersTime = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in
                    dictCompoIndex.items()}
-    dfHistory = blp.bdh(list_index, ['PX_LAST'], startDate, endDate)  # CUR_MKT_CAP # TOT_COMMON_EQY # PX_LAST
-
+    dfHistory = blp.bdh(list_index, ['TOTAL_EQUITY'], startDate, endDate)  # CUR_MKT_CAP # TOT_COMMON_EQY # PX_LAST
+    if type_strat == TypeStrategy.btm.value:
+        dfHistory_btm = blp.bdh(list_index, ['CUR_MKT_CAP'], startDate, endDate)
+    else:
+        dfHistory_btm =None
     configuration = Config(universe=list_index,
                            start_ts=startDate,
                            end_ts=endDate,
-                           strategy_code=TypeStrategy.momentum.value,
+                           strategy_code=type_strat,
                            name_index=tickers,
                            frequency=Frequency.DAILY)
 
     backtest = Backtester(config=configuration, data=dfHistory,
                           compo=dictTickersTime,
                           intReshuffle=10,
-                          lag1=30, lag2=200, boolGeneric=False, strat=TypeOptiWeights.MIN_VARIANCE)
+                          lag1=30, lag2=200, boolGeneric=False, strat=TypeOptiWeights.MIN_VARIANCE,
+                          other_data=dfHistory_btm)
 
     back = backtest.compute_levels()
     backtest_res = pd.DataFrame(back)
@@ -90,9 +95,9 @@ if __name__ == '__main__':
 
     # hit ratios
 
-    hit_ratio_total = round(backtest.hit_dict['hit'] / backtest.hit_dict['total_position_taken'], 2)
-    mean_ret_from_hits = round(backtest.hit_dict['mean_ret_from_hits'], 5)
-    mean_ret_from_misses = round(backtest.hit_dict['mean_ret_from_misses'], 5)
+    hit_ratio_total = round(backtest.dictHitStat['hit'] / backtest.dictHitStat['total_position_taken'], 2)
+    mean_ret_from_hits = round(backtest.dictHitStat['mean_ret_from_hits'], 5)
+    mean_ret_from_misses = round(backtest.dictHitStat['mean_ret_from_misses'], 5)
 
     # TuW
     tuw = backtest.tuw
