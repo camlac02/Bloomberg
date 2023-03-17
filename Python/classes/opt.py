@@ -1,5 +1,7 @@
 import sys
+import subprocess
 import numpy as np
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'yfinance'])
 import yfinance as yf
 from scipy.optimize import minimize
 import math

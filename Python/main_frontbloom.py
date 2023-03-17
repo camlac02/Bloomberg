@@ -3,8 +3,8 @@ import subprocess
 from functools import reduce
 import matplotlib.pyplot as plt
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-import blpapi
-import yfinance as yf
+# import blpapi
+# import yfinance as yf
 import json
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from classes.strategies_bloom import Strategies, TypeStrategy
 # subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'polars'])
 import polars as pl
 
-def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options):
+def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, str_type):
     arr_tickers = str_tickers.split(", ")  
     arr_fields = str_fields.split(", ") 
     arr_options = str_options.split(", ") 
@@ -57,7 +57,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     else:
         return "Le type d'optimisation n'est pas défini"
 
-    DATE = blpapi.Name("date")
+    '''DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
     FIELD_DATA = blpapi.Name("fieldData")
@@ -98,6 +98,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     df_mdd = pd.DataFrame(serie_dd.cummin())
 
     # Loop on each element of drawdown dataframe object to format json
+    dict_quotes = []
     for int_element in range(len(df_dd)):
         dict_quote = {'ts': df_backtester.iloc[int_element].ts.isoformat(), 'drawdown': df_dd.iloc[int_element]['close']}
         dict_quotes.append(dict_quote)
@@ -105,6 +106,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_dd = json.dumps(dict_quotes)
 
     # Loop on each element of maximum drawdown dataframe object to format json
+    dict_quotes = []
     for int_element in range(len(df_mdd)):
         dict_quote = {'ts': df_backtester.iloc[int_element].ts.isoformat(), 'mdd': df_mdd.iloc[int_element]['close']}
         dict_quotes.append(dict_quote)
@@ -121,26 +123,62 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     # Loop on each element of backtester object to format json
     arr_values = [float_VaR, float_hitratio, float_meanhits, float_meanmisses]
     arr_names = ["float_VaR", "float_hitratio", "float_meanhits", "float_meanmisses"]
+    dict_quotes = []
     for int_element in range(len(arr_values)):
         dict_quote = {'variable': arr_names[int_element], 'value': arr_values[int_element]}
         dict_quotes.append(dict_quote)
 
     # Creation of json object
-    json_values = json.dumps(dict_quotes)
+    json_values = json.dumps(dict_quotes)'''
+    
+    if TypeStrategy_strategie == TypeStrategy.momentum:
+        if TypeOptiWeights_optimisation == TypeOptiWeights.MAX_SHARPE:
+            str_nomfichier = "_mom_maxs"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.MIN_VARIANCE:
+            str_nomfichier = "_mom_minvar"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.RISK_PARITY:
+            str_nomfichier = "_mom_risk"
+    elif TypeStrategy_strategie == TypeStrategy.mc:
+        if TypeOptiWeights_optimisation == TypeOptiWeights.MAX_SHARPE:
+            str_nomfichier = "_mc_maxs"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.MIN_VARIANCE:
+            str_nomfichier = "_mc_minvar"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.RISK_PARITY:
+            str_nomfichier = "_mc_risk"
+    elif TypeStrategy_strategie == TypeStrategy.momentum:
+        if TypeOptiWeights_optimisation == TypeOptiWeights.MAX_SHARPE:
+            str_nomfichier = "_btm_maxs"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.MIN_VARIANCE:
+            str_nomfichier = "_btm_minvar"
+        elif TypeOptiWeights_optimisation == TypeOptiWeights.RISK_PARITY:
+            str_nomfichier = "_btm_risk"
 
-    with open('json_back_mc_minvar.json', 'w') as f:
-        json.dump(json_back, f)
+    with open('./JSON/json_back' + str_nomfichier + '.json') as file_f:
+        json_back = json.load(file_f)
 
-    with open('json_dd_mc_minvar.json', 'w') as f:
-        json.dump(json_dd, f)
+    with open('./JSON/json_dd' + str_nomfichier + '.json') as file_f:
+        json_dd = json.load(file_f)
+    
+    with open('./JSON/json_mdd' + str_nomfichier + '.json') as file_f:
+        json_mdd = json.load(file_f)
 
-    with open('json_mdd_mc_minvar.json', 'w') as f:
-        json.dump(json_mdd, f)
+    with open('./JSON/json_values' + str_nomfichier + '.json') as file_f:
+        json_values = json.load(file_f)
 
-    with open('json_values_mc_minvar.json', 'w') as f:
-        json.dump(json_values, f)
+    if str_type == "Close":
+        print(json_back)
+    elif str_type == "Drawdown":
+        print(json_dd)
+    elif str_type == "MaxDrawdown":
+        print(json_mdd)
+    elif str_type == "Values":
+        print(json_values)
 
-    return json_back, json_dd, json_mdd, json_values
+def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options):
+    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Values"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Drawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "MaxDrawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Values"))
 
 if __name__ == '__main__':
-    return_values('PX_LAST, INDX_MWEIGHT_HIST', 'CAC Index', dt.datetime(2015, 1, 1), dt.datetime(2023, 2, 10), 'momentum', 'min_variance', '5, 25')
+    return_json('PX_LAST, INDX_MWEIGHT_HIST', 'CAC Index', dt.datetime(2015, 1, 1), dt.datetime(2023, 2, 10), 'momentum', 'min_variance', '5, 25')
