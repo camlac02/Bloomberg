@@ -5,8 +5,7 @@ import subprocess
 from enum import Enum
 from datetime import datetime
 # implement pip as a subprocess:
-subprocess.check_call([sys.executable, '-m', 'pip', 'install',
-                       'datetime'])
+# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'datetime'])
 import datetime
 
 

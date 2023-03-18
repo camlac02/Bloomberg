@@ -1,1 +1,1 @@
-"[{\"variable\": \"float_VaR\", \"value\": -0.09}, {\"variable\": \"float_hitratio\", \"value\": 0.5}, {\"variable\": \"float_meanhits\", \"value\": 0.02442}, {\"variable\": \"float_meanmisses\", \"value\": -0.02446}]"
+"[{\"variable\": \"Value-at-risk\", \"value\": -0.09}, {\"variable\": \"Hit ratio\", \"value\": 0.5}, {\"variable\": \"Mean return from hits\", \"value\": 0.02442}, {\"variable\": \"Mean return from misses\", \"value\": -0.02446}]"

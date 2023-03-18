@@ -15,10 +15,11 @@ from classes.strategies_bloom import Strategies, TypeStrategy
 # subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'polars'])
 import polars as pl
 
-def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, str_type):
+def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, str_type):
     arr_tickers = str_tickers.split(", ")  
     arr_fields = str_fields.split(", ") 
     arr_options = str_options.split(", ") 
+    int_rebalancement = int(str_rebelancement)
     # Strategy type definition
     if str_strategie == "momentum":
         TypeStrategy_strategie = TypeStrategy.momentum
@@ -79,7 +80,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
                            strategy_code=TypeStrategy_strategie.value, name_index=arr_tickers, 
                            frequency=Frequency.DAILY)
     Backtester_backtest = Backtester(config=configuration, data=data, compo=bloom,
-                          reshuffle=10, generic=True, lag1=int_lag1, lag2=int_lag2, strat=TypeOptiWeights_optimisation)
+                          reshuffle=int_rebalancement, generic=True, lag1=int_lag1, lag2=int_lag2, strat=TypeOptiWeights_optimisation)
     df_back = Backtester_backtest.compute_levels()
 
     # Loop on each element of backtester object to format json
@@ -122,7 +123,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     
     # Loop on each element of backtester object to format json
     arr_values = [float_VaR, float_hitratio, float_meanhits, float_meanmisses]
-    arr_names = ["float_VaR", "float_hitratio", "float_meanhits", "float_meanmisses"]
+    arr_names = ["Value-at-risk", "Hit ratio", "Mean return from hits", "Mean return from misses"]
     dict_quotes = []
     for int_element in range(len(arr_values)):
         dict_quote = {'variable': arr_names[int_element], 'value': arr_values[int_element]}
@@ -174,11 +175,11 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     elif str_type == "Values":
         print(json_values)
 
-def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options):
-    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Values"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Drawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "MaxDrawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_options, "Values"))
+def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options):
+    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Close"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Drawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "MaxDrawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Values"))
 
 if __name__ == '__main__':
-    return_json('PX_LAST, INDX_MWEIGHT_HIST', 'CAC Index', dt.datetime(2015, 1, 1), dt.datetime(2023, 2, 10), 'momentum', 'min_variance', '5, 25')
+    return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8])
