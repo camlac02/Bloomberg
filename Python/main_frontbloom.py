@@ -3,7 +3,7 @@ import subprocess
 from functools import reduce
 import matplotlib.pyplot as plt
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-# import blpapi
+import blpapi
 # import yfinance as yf
 import json
 import numpy as np
@@ -15,11 +15,14 @@ from classes.strategies_bloom import Strategies, TypeStrategy
 # subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'polars'])
 import polars as pl
 
-def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, str_type):
+def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_type):
     arr_tickers = str_tickers.split(", ")  
     arr_fields = str_fields.split(", ") 
     arr_options = str_options.split(", ") 
-    int_rebalancement = int(str_rebelancement)
+    if str_rebelancement != "":
+        int_rebalancement = int(str_rebelancement)
+    bool_generic = bool(str_generic)
+
     # Strategy type definition
     if str_strategie == "momentum":
         TypeStrategy_strategie = TypeStrategy.momentum
@@ -58,7 +61,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     else:
         return "Le type d'optimisation n'est pas défini"
 
-    '''DATE = blpapi.Name("date")
+    DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
     FIELD_DATA = blpapi.Name("fieldData")
@@ -68,19 +71,20 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     SECURITY_DATA = blpapi.Name("securityData")
 
     blp = BLP(DATE, SECURITY, SECURITY_DATA, FIELD_DATA)
-    bloom2 = blp.compo_per_date_old(strSecurity=arr_tickers, strFields=arr_fields,
+    dic_compo = blp.compo_per_date_old(strSecurity=arr_tickers, strFields=arr_fields,
                      strOverrideField="END_DATE_OVERRIDE", strOverrideValue=date_start, strEndDate=date_end)
-    df_index = pd.DataFrame(bloom2).T
+    df_index = pd.DataFrame(dic_compo).T
     list_index = list(map(lambda x: x + " Equity", sorted(list(set(df_index.sum()[0])))))
 
-    bloom = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in bloom2.items()}
-    data = blp.bdh(list_index, ['PX_LAST'], date_start, date_end) 
-    
+    dic_tickers = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in dic_compo.items()}
+    df_history = blp.bdh(list_index, ['PX_LAST'], date_start, date_end) 
+
     configuration = Config(universe=list_index, start_ts=date_start, end_ts=date_end,
                            strategy_code=TypeStrategy_strategie.value, name_index=arr_tickers, 
                            frequency=Frequency.DAILY)
-    Backtester_backtest = Backtester(config=configuration, data=data, compo=bloom,
-                          reshuffle=int_rebalancement, generic=True, lag1=int_lag1, lag2=int_lag2, strat=TypeOptiWeights_optimisation)
+    Backtester_backtest = Backtester(config=configuration, data=df_history, compo=dic_tickers,
+                          reshuffle=int_rebalancement, bool_generic=bool_generic, lag1=int_lag1, lag2=int_lag2, 
+                          strat=TypeOptiWeights_optimisation)
     df_back = Backtester_backtest.compute_levels()
 
     # Loop on each element of backtester object to format json
@@ -91,6 +95,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
 
     # Creation of json object
     json_back = json.dumps(dict_quotes)
+    print(json_back)
 
     df_backtester = pd.DataFrame(df_back)
     int_max = df_backtester['close'].cummax()
@@ -105,6 +110,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         dict_quotes.append(dict_quote)
 
     json_dd = json.dumps(dict_quotes)
+    print(json_dd)
 
     # Loop on each element of maximum drawdown dataframe object to format json
     dict_quotes = []
@@ -113,6 +119,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         dict_quotes.append(dict_quote)
 
     json_mdd = json.dumps(dict_quotes)
+    print(json_mdd)
 
     # Historical VaR
     ret = df_backtester.close.pct_change().dropna().sort_values().reset_index(drop=True)
@@ -130,8 +137,10 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         dict_quotes.append(dict_quote)
 
     # Creation of json object
-    json_values = json.dumps(dict_quotes)'''
+    json_values = json.dumps(dict_quotes)
+    print(json_values)
     
+    '''
     if TypeStrategy_strategie == TypeStrategy.momentum:
         if TypeOptiWeights_optimisation == TypeOptiWeights.MAX_SHARPE:
             str_nomfichier = "_mom_maxs"
@@ -173,13 +182,14 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     elif str_type == "MaxDrawdown":
         print(json_mdd)
     elif str_type == "Values":
-        print(json_values)
+        print(json_values)'''
 
-def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options):
-    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Close"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Drawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "MaxDrawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_options, "Values"))
+def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options):
+    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Close"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Drawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "MaxDrawdown"), 
+          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Values"))
 
 if __name__ == '__main__':
-    return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8])
+    return_json("PX_LAST, INDX_MWEIGHT_HIST", "CAC Index", dt.datetime(2015, 1, 2), dt.datetime(2023, 1, 2), "momentum", "max_sharpe", '10', 'False', '5, 25')
+    # sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]

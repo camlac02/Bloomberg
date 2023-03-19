@@ -1,5 +1,5 @@
 import pandas as pd
-# import blpapi
+import blpapi
 import datetime as dt
 import numpy as np
 
@@ -14,8 +14,6 @@ class BLP():
             Improve this
             BLP object initialization
             Synchronus event handling
-
-
             ref:
                 https://data.bloomberglp.com/labs/sites/2/2013/12/blpapi-developers-guide-1.38.pdf
                 https://data.bloomberglp.com/professional/sites/10/2017/03/BLPAPI-Core-Developer-Guide.pdf
@@ -53,14 +51,11 @@ class BLP():
             Summary:
                 Reference Data Request ; Real-time if entitled, else delayed values
                 Only supports 1 override
-
-
             Input:
                 strSecurity
                 strFields
                 strOverrideField
                 strOverrideValue
-
             Output:
                Dict
         """
@@ -162,9 +157,7 @@ class BLP():
         """
             Summary:
                 HistoricalDataRequest ;
-
                 Gets historical data for a set of securities and fields
-
             Inputs:
                 strSecurity: list of str : list of tickers
                 strFields: list of str : list of fields, must be static fields (e.g. px_last instead of last_price)
@@ -175,14 +168,11 @@ class BLP():
                 curr: string, else default currency is used
                 Days: nonTradingDayFillOption : NON_TRADING_WEEKDAYS*, ALL_CALENDAR_DAYS or ACTIVE_DAYS_ONLY
                 fill: nonTradingDayFillMethod :  PREVIOUS_VALUE, NIL_VALUE
-
                 Options can be selected these are outlined in “Reference Services and Schemas Guide.”
-
             Output:
                 A list containing as many dataframes as requested fields
             # Partial response : 6
             # Response : 5
-
         """
 
         # -----------------------------------------------------------------------
@@ -291,14 +281,11 @@ class BLP():
             Summary:
                 Reference Data Request ; Real-time if entitled, else delayed values
                 Only supports 1 override
-
-
             Input:
                 strSecurity
                 strFields
                 strOverrideField
                 strOverrideValue
-
             Output:
                Dict
         """
@@ -433,7 +420,6 @@ class BLP():
                 for length in range(len(globals()['dict_' + field][ticker_name])):
                     dict_Security_Fields[field + str(length)] = globals()['dict_' + field][ticker_name][length]
         
-
         return dict_Security_Fields"""
 
 

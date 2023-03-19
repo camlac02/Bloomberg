@@ -50,10 +50,10 @@ export default function Home() {
     strategies: "",
     optimisation: "",
     rebalancement: "",
+    generic: "",
     options: "",
   });
 
-  const [finalChart, setFinalChart] = useState(false);
   const { data, error, mutate, isLoading } = useSWR(
     shouldFetch
       ? `/api?fields=${chart.fields}&tickers=${
@@ -62,7 +62,9 @@ export default function Home() {
           chart.endDate
         ).format()}&strategies=${chart.strategies}&optimisation=${
           chart.optimisation
-        }&rebalancement=${chart.rebalancement}&options=${chart.options}`
+        }&rebalancement=${chart.rebalancement}&generic=${
+          chart.generic
+        }&options=${chart.options}`
       : null,
     fetcher
   );
@@ -240,6 +242,26 @@ export default function Home() {
                   </div>
 
                   <div className="col-span-6">
+                    <label
+                      htmlFor="example3"
+                      className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']"
+                    >
+                      Données génériques
+                    </label>
+                    <select
+                      id="example3"
+                      className="block w-full h-8 rounded-md border-gray-300 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50"
+                      onChange={(e) =>
+                        setChart({ ...chart, generic: e.target.value })
+                      }
+                    >
+                      <option value="">Sélectionner un type de data</option>
+                      <option value="True">Génériques</option>
+                      <option value="False">Non génériques</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-12">
                     <label
                       htmlFor="example9"
                       className="mb-1 block text-sm font-medium text-gray-500"

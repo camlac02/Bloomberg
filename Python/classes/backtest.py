@@ -79,16 +79,13 @@ class Backtester:
     Lopez de Prado, and Zhu [2017a] and Chapter 14), and the Sharpe ratio may ´
     be properly deflated by the number of trials carried out (Bailey and Lopez de ´
     Prado [2014b]).
-
     5/ Simulate scenarios rather than history (Chapter 12). A standard backtest is a
     historical simulation, which can be easily overfit. History is just the random
     path that was realized, and it could have been entirely different. Your strategy
     should be profitable under a wide range of scenarios, not just the anecdotal
     historical path. It is harder to overfit the outcome of thousands of “what if”
     scenarios.
-
     Chapter 14 for statistics
-
     """
 
     def __init__(self, config: Config, strat_data, compo, timeserie=None, reshuffle=1):
@@ -224,7 +221,6 @@ class Backtester:
 
     def compute_positions(self, pos, index_name, q=0.25):
         """
-
         :param pos: strategy data reshuffled
         :param index_name: CAC Index for exemple
         :param q: part of long / short
@@ -271,7 +267,6 @@ class Backtester:
     @staticmethod
     def compute_position_ts(compo, pos, ts, q=0.25):
         """
-
         :param compo: compo of index
         :param pos: strategy data reshuffled
         :param ts: current time
@@ -296,7 +291,6 @@ class Backtester:
 
     def update_hit(self, returns=None, val=None, end=False):
         '''
-
         :param returns: curr_quote / prev_quote - 1
         :param val: weight
         :param end: bool
@@ -332,7 +326,6 @@ class Backtester:
 
     def TuW(self, pnl: pd.DataFrame):
         """
-
         :param pnl: series of pnl
         : compute Time under water and drawdowns using high-watermarks
         """
@@ -346,4 +339,3 @@ class Backtester:
         self.dd = 1 - df1['min'] / df1['hwm']
         tuw = (df1.index[1:] - df1.index[:-1])
         self.tuw = pd.Series(tuw, index=df1.index[:-1])
-

@@ -14,6 +14,7 @@ app.get("/api", (req, res) => {
       req.query.strategies,
       req.query.optimisation,
       req.query.rebalancement,
+      req.query.generic,
       req.query.options,
     ],
   };

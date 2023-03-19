@@ -5,7 +5,8 @@ import subprocess
 from enum import Enum
 from datetime import datetime
 # implement pip as a subprocess:
-# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'datetime'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install',
+                       'datetime'])
 import datetime
 
 
@@ -28,7 +29,6 @@ class Strategies:
 
     def data_strategies(self, data, lag1=None, lag2=None, other_data=None):
         """
-
         :param data:
         :param lag1:
         :param lag2:
@@ -52,4 +52,3 @@ class Strategies:
 
         self.strat_data.reset_index(inplace=True)
         self.strat_data.rename(columns={"index": 'Date'}, inplace=True)
-
