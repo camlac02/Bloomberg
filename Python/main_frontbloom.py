@@ -1,27 +1,23 @@
-import sys
-import subprocess
-from functools import reduce
-import matplotlib.pyplot as plt
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-import blpapi
-# import yfinance as yf
+# import blpapi
 import json
+import datetime as dt
+import yfinance as yf
 import numpy as np
 import pandas as pd
-import datetime as dt
 from classes.module import BLP
 from classes.strategies_bloom import Strategies, TypeStrategy
 
-# subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'polars'])
-import polars as pl
-
-def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_type):
+def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options):
     arr_tickers = str_tickers.split(", ")  
     arr_fields = str_fields.split(", ") 
     arr_options = str_options.split(", ") 
     if str_rebelancement != "":
         int_rebalancement = int(str_rebelancement)
-    bool_generic = bool(str_generic)
+    if str_generic == 'True':
+        bool_generic = True
+    else:
+        bool_generic = False 
 
     # Strategy type definition
     if str_strategie == "momentum":
@@ -29,17 +25,14 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         if len(arr_options) != 2:
             "Il faut définir les lags pour la stratégie momentum"
         else: 
-            data_other = None
+            df_otherdata = None
             int_lag1 = int(arr_options[0])
             int_lag2 = int(arr_options[1])
     elif str_strategie == "mc":
         TypeStrategy_strategie = TypeStrategy.mc
-        if len(arr_options) != 0:
-            "Il ne faut pas d'options pour la stratégie market capitalization"
-        else: 
-            data_other = None
-            int_lag1 = None
-            int_lag2 = None
+        df_otherdata = None
+        int_lag1 = None
+        int_lag2 = None
     elif str_strategie == "btm":
         TypeStrategy_strategie = TypeStrategy.btm
         if len(arr_options) != 3:
@@ -47,10 +40,9 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         else: 
             int_lag1 = int(arr_options[0])
             int_lag2 = int(arr_options[1])
-            data_other = arr_options[2]
+            df_otherdata = arr_options[2]
     else :
         return "La stratégie n'est pas définie"
-
 
     if str_optimisation == "max_sharpe":
         TypeOptiWeights_optimisation = TypeOptiWeights.MAX_SHARPE
@@ -61,6 +53,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     else:
         return "Le type d'optimisation n'est pas défini"
 
+    '''
     DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
@@ -79,12 +72,15 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     dic_tickers = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in dic_compo.items()}
     df_history = blp.bdh(list_index, ['PX_LAST'], date_start, date_end) 
 
+    if str_strategie == TypeStrategy.btm.value:
+        df_otherdata = blp.bdh(list_index, ['CUR_MKT_CAP'], date_start, date_end)
+
     configuration = Config(universe=list_index, start_ts=date_start, end_ts=date_end,
                            strategy_code=TypeStrategy_strategie.value, name_index=arr_tickers, 
                            frequency=Frequency.DAILY)
     Backtester_backtest = Backtester(config=configuration, data=df_history, compo=dic_tickers,
-                          reshuffle=int_rebalancement, bool_generic=bool_generic, lag1=int_lag1, lag2=int_lag2, 
-                          strat=TypeOptiWeights_optimisation)
+                          intReshuffle=int_rebalancement, boolGeneric=bool_generic, lag1=int_lag1, lag2=int_lag2, 
+                          strat=TypeOptiWeights_optimisation, other_data = df_otherdata)
     df_back = Backtester_backtest.compute_levels()
 
     # Loop on each element of backtester object to format json
@@ -121,12 +117,12 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_mdd = json.dumps(dict_quotes)
     print(json_mdd)
 
-    # Historical VaR
+    # Historical VaR, hit ratio, Mean return from hits, Mean return from misses
     ret = df_backtester.close.pct_change().dropna().sort_values().reset_index(drop=True)
     float_VaR = round(ret[int((1-0.95) * ret.shape[0])-1], 2)
-    float_hitratio = round(Backtester_backtest.hit_dict['hit'] / Backtester_backtest.hit_dict['total_position_taken'], 2)
-    float_meanhits = round(Backtester_backtest.hit_dict['mean_ret_from_hits'], 5)
-    float_meanmisses = round(Backtester_backtest.hit_dict['mean_ret_from_misses'], 5)
+    float_hitratio = round(Backtester_backtest.dictHitStat['hit'] / Backtester_backtest.dictHitStat['total_position_taken'], 2)
+    float_meanhits = round(Backtester_backtest.dictHitStat['mean_ret_from_hits'], 5)
+    float_meanmisses = round(Backtester_backtest.dictHitStat['mean_ret_from_misses'], 5)
     
     # Loop on each element of backtester object to format json
     arr_values = [float_VaR, float_hitratio, float_meanhits, float_meanmisses]
@@ -139,8 +135,17 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     # Creation of json object
     json_values = json.dumps(dict_quotes)
     print(json_values)
-    
-    '''
+
+    dict_quotes = []
+    arr_tuw = Backtester_backtest.tuw.copy()
+    for int_tuw in range(len(arr_tuw)):
+        dict_quote = {'ts': arr_tuw.index[int_tuw].isoformat(), 'tuw': arr_tuw[int_tuw].days}
+        dict_quotes.append(dict_quote)
+
+    json_tuw = json.dumps(dict_quotes)
+    print(json_tuw)'''
+
+    # File name initialisation following type of strategy and optimisation
     if TypeStrategy_strategie == TypeStrategy.momentum:
         if TypeOptiWeights_optimisation == TypeOptiWeights.MAX_SHARPE:
             str_nomfichier = "_mom_maxs"
@@ -162,7 +167,23 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
             str_nomfichier = "_btm_minvar"
         elif TypeOptiWeights_optimisation == TypeOptiWeights.RISK_PARITY:
             str_nomfichier = "_btm_risk"
-
+           
+    # Json saving through Bloomberg
+    '''with open('json_back' + str_nomfichier + '.json', "w") as file_f:
+        jsonback = json.dump(json_back, file_f)
+        
+    with open('json_dd' + str_nomfichier + '.json', "w") as file_f:
+        jsondd = json.dump(json_dd, file_f)
+        
+    with open('json_mdd' + str_nomfichier + '.json', "w") as file_f:
+        jsonmdd = json.dump(json_mdd, file_f)
+        
+    with open('json_values' + str_nomfichier + '.json', "w") as file_f:
+        jsonvalues = json.dump(json_values, file_f)
+           
+    with open('json_tuw' + str_nomfichier + '.json', "w") as file_f:
+        jsontuw = json.dump(json_tuw, file_f)'''
+            
     with open('./JSON/json_back' + str_nomfichier + '.json') as file_f:
         json_back = json.load(file_f)
 
@@ -175,21 +196,25 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     with open('./JSON/json_values' + str_nomfichier + '.json') as file_f:
         json_values = json.load(file_f)
 
-    if str_type == "Close":
-        print(json_back)
-    elif str_type == "Drawdown":
-        print(json_dd)
-    elif str_type == "MaxDrawdown":
-        print(json_mdd)
-    elif str_type == "Values":
-        print(json_values)'''
+    with open('./JSON/json_tuw' + str_nomfichier + '.json') as file_f:
+        json_tuw = json.load(file_f)
+
+    print(json_back)
+    print(json_dd)
+    print(json_mdd)
+    print(json_values)
+    print(json_tuw)
+
+    cac = yf.download('^FCHI', start=date_start, end=date_end).Close
+    df_cac = pd.DataFrame(100*cac/cac.iloc[0]).reset_index().to_dict('records')
+    json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
+
+    print(json_cac)
+
 
 def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options):
-    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Close"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Drawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "MaxDrawdown"), 
-          return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, "Values"))
+    return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options))
 
 if __name__ == '__main__':
     return_json("PX_LAST, INDX_MWEIGHT_HIST", "CAC Index", dt.datetime(2015, 1, 2), dt.datetime(2023, 1, 2), "momentum", "max_sharpe", '10', 'False', '5, 25')
-    # sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]
+   # sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]

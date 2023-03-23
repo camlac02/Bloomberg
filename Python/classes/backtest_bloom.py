@@ -12,9 +12,7 @@ import polars as pl
 from classes.opt import OptimizeAllocation as opti
 from classes.generate_syntethic_data import Simulate
 from classes.strategies_bloom import Strategies, TypeStrategy
-
 warn('Running this module requires the package: polars 0.15.14')
-
 
 class Frequency(Enum):
     HOURLY = "Hourly"
@@ -146,14 +144,14 @@ class Backtester:
             # dataset.iloc[0, 1:].to_numpy().reshape(-1, 1)
             sim.compute_sim_dataset(dataset.iloc[0, 1:].ffill().to_numpy().reshape(-1, 1), idx=dataset.index,
                                     col=dataset.columns[1:])
-            dataset = sim.generic_data
-            return_mat = pd.DataFrame(sim.correlated_returns_sim, columns=dataset.columns)
+            dataset = sim.dfGenericData
+            return_mat = pd.DataFrame(sim.arr_correlated_returns_sim, columns=dataset.columns)
             dataset.insert(0, value=date_col, column='Date')
             return_mat.insert(0, value=date_col, column='Date')
 
         strat = Strategies(stypestrat)
         lag1, lag2 = lags
-        strat.data_strategies(dataset.iloc[:, 1:].copy(), lag1, lag2, other_data=self.other_data.copy())
+        strat.data_strategies(dataset.iloc[:, 1:].copy(), lag1, lag2, other_data=self.other_data.copy() if self.other_data is not None else None)
         strat.strat_data.insert(0, 'Date', dataset.Date)
         self.config.start_ts = strat.strat_data.Date.iloc[0]
 
@@ -168,6 +166,7 @@ class Backtester:
             return_mat.Date = return_mat.Date.astype('datetime64')
             self.df_returns_mat = return_mat.loc[1:]
         else:
+            return_mat.Date = return_mat.Date.astype('datetime64')
             self.df_returns_mat = return_mat
         return pl.convert.from_pandas(strat.strat_data), timeserie
 
@@ -358,7 +357,7 @@ class Backtester:
 
             # keep only passed date and stock we go long or short on
             listStocks = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
-            dfRet = returns[returns.Date < ts][listStocks]
+            dfRet = returns[returns.Date < ts].loc[:, listStocks]
             alloc = opti(dfRet.T, type_strat_alloc, rf=0)
             if ts.date() <= self.config.start_ts and self.config.strategy_code != TypeStrategy.momentum.value:
                 alloc.final_weight = np.zeros((len(listStocks),))

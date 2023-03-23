@@ -69,6 +69,7 @@ const Chart = (data) => {
     const APIfinalDataJsonClose = JSON.parse(finalData?.messages[0]);
     const APIfinalDataJsonDd = JSON.parse(finalData?.messages[1]);
     const APIfinalDataJsonMdd = JSON.parse(finalData?.messages[2]);
+    const APIfinalDataJsonCAC = JSON.parse(finalData?.messages[6]);
     console.log(APIfinalDataJsonClose);
 
     const finalDataJsonClose = {
@@ -81,6 +82,12 @@ const Chart = (data) => {
           data: APIfinalDataJsonClose.map((data) => data.close),
           borderColor: "rgb(53, 162, 235)",
           backgroundColor: "rgba(53, 162, 235, 0.5)",
+        },
+        {
+          label: "Close prices CAC",
+          data: APIfinalDataJsonCAC.map((data) => data.close),
+          borderColor: "rgb(255, 0, 0)",
+          backgroundColor: "rgba(255, 0, 0, 0.5)",
         },
       ],
     };
