@@ -1,5 +1,6 @@
+import sys
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-# import blpapi
+import blpapi
 import json
 import datetime as dt
 import yfinance as yf
@@ -12,8 +13,11 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     arr_tickers = str_tickers.split(", ")  
     arr_fields = str_fields.split(", ") 
     arr_options = str_options.split(", ") 
+
     if str_rebelancement != "":
         int_rebalancement = int(str_rebelancement)
+    else :
+        int_rebalancement = 10
     if str_generic == 'True':
         bool_generic = True
     else:
@@ -40,7 +44,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         else: 
             int_lag1 = int(arr_options[0])
             int_lag2 = int(arr_options[1])
-            df_otherdata = arr_options[2]
+            str_otherdata = arr_options[2]
     else :
         return "La stratégie n'est pas définie"
 
@@ -53,7 +57,6 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     else:
         return "Le type d'optimisation n'est pas défini"
 
-    '''
     DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
@@ -73,7 +76,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     df_history = blp.bdh(list_index, ['PX_LAST'], date_start, date_end) 
 
     if str_strategie == TypeStrategy.btm.value:
-        df_otherdata = blp.bdh(list_index, ['CUR_MKT_CAP'], date_start, date_end)
+        df_otherdata = blp.bdh(list_index, [str_otherdata], date_start, date_end)
 
     configuration = Config(universe=list_index, start_ts=date_start, end_ts=date_end,
                            strategy_code=TypeStrategy_strategie.value, name_index=arr_tickers, 
@@ -143,7 +146,33 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         dict_quotes.append(dict_quote)
 
     json_tuw = json.dumps(dict_quotes)
-    print(json_tuw)'''
+    print(json_tuw)
+
+    # A vérifier
+    dfRet = df_backtester['close'].pct_change()
+    daily_returns = (1 + dfRet) ** (1 / int_rebalancement) - 1
+    std_daily = np.std(daily_returns)*100
+
+    total_return = (df_backtester.close.iloc[-1] / df_backtester.close.iloc[0]) - 1
+    annualized_perf = (1 + total_return) ** (1 / (date_end-date_start).days/365) - 1 # false
+
+    dict_quotes = [{'Daily Vol %': std_daily, "Monthly Vol %": std_daily * np.sqrt(22),
+                    "Annualized Vol %": std_daily * np.sqrt(252), 'Annualized Perf %': annualized_perf*100}]
+
+    json_stats = json.dumps(dict_quotes)
+    print(json_stats)
+
+    # Create output PORT from dict
+    dfOutputPort = pd.DataFrame.from_dict(Backtester_backtest._weight_by_pk, orient='index', columns=["ts", "underlying_code",'value'] ,dtype=None)
+    dfOutputPort.index = pd.MultiIndex.from_tuples(dfOutputPort.index)
+    factor = dfOutputPort.index.get_level_values(0)
+    dfOutputPort['Factor'] = factor.to_numpy()
+    dfOutputPort.reset_index(inplace=True, drop=True)
+    # polars to int
+    dfOutputPort['value'] = dfOutputPort['value'].apply(lambda x: x.to_numpy()[0][0])
+
+    '''
+    # Json saving
 
     # File name initialisation following type of strategy and optimisation
     if TypeStrategy_strategie == TypeStrategy.momentum:
@@ -169,7 +198,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
             str_nomfichier = "_btm_risk"
            
     # Json saving through Bloomberg
-    '''with open('json_back' + str_nomfichier + '.json', "w") as file_f:
+    with open('json_back' + str_nomfichier + '.json', "w") as file_f:
         jsonback = json.dump(json_back, file_f)
         
     with open('json_dd' + str_nomfichier + '.json', "w") as file_f:
@@ -183,7 +212,8 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
            
     with open('json_tuw' + str_nomfichier + '.json', "w") as file_f:
         jsontuw = json.dump(json_tuw, file_f)'''
-            
+
+    '''       
     with open('./JSON/json_back' + str_nomfichier + '.json') as file_f:
         json_back = json.load(file_f)
 
@@ -197,13 +227,16 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         json_values = json.load(file_f)
 
     with open('./JSON/json_tuw' + str_nomfichier + '.json') as file_f:
-        json_tuw = json.load(file_f)
+        json_tuw = json.load(file_f)'''
 
     print(json_back)
     print(json_dd)
     print(json_mdd)
     print(json_values)
     print(json_tuw)
+
+    date_start = date_start[0:10]
+    date_end = date_end[0:10]
 
     cac = yf.download('^FCHI', start=date_start, end=date_end).Close
     df_cac = pd.DataFrame(100*cac/cac.iloc[0]).reset_index().to_dict('records')
@@ -217,4 +250,5 @@ def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, st
 
 if __name__ == '__main__':
     return_json("PX_LAST, INDX_MWEIGHT_HIST", "CAC Index", dt.datetime(2015, 1, 2), dt.datetime(2023, 1, 2), "momentum", "max_sharpe", '10', 'False', '5, 25')
+    # return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9])
    # sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]

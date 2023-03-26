@@ -31,6 +31,9 @@ const options1 = {
     title: {
       display: true,
       text: "Close prices",
+      font: {
+        size: 30,
+      },
     },
   },
 };
@@ -44,6 +47,9 @@ const options2 = {
     title: {
       display: true,
       text: "Drawdown",
+      font: {
+        size: 30,
+      },
     },
   },
 };
@@ -57,6 +63,9 @@ const options3 = {
     title: {
       display: true,
       text: "Maximum Drawdown",
+      font: {
+        size: 30,
+      },
     },
   },
 };

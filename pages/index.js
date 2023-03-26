@@ -244,7 +244,7 @@ export default function Home() {
                   <div className="col-span-6">
                     <label
                       htmlFor="example3"
-                      className="mb-1 block text-sm font-medium text-gray-500 after:ml-0.5 after:text-red-500 after:content-['*']"
+                      className="mb-1 block text-sm font-medium text-gray-500"
                     >
                       Données génériques
                     </label>
