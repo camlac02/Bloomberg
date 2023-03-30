@@ -15,7 +15,6 @@ class OptimizeAllocation:
         self.rf = rf
         self.final_weight = None
         self.sharpe = None
-        # annualized sharpe ratio
 
     def max_sharpe(self):
         var_cov = self.variance_covariance_matrix()
@@ -25,7 +24,7 @@ class OptimizeAllocation:
             w = np.array(w)
             return -(w @ np.mean(ret_matrix, 1) - self.rf) * (w.T @ var_cov @ w) ** (
                     -1 / 2
-            )*np.sqrt(252)
+            )
 
         cons = {"type": "eq", "fun": lambda w: np.sum(w) - 1}
         # bounds = tuple((0,10) for x in range(0,ret.shape[0]))

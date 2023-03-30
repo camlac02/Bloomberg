@@ -1,6 +1,6 @@
 import sys
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-import blpapi
+# import blpapi
 import json
 import datetime as dt
 import yfinance as yf
@@ -57,6 +57,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     else:
         return "Le type d'optimisation n'est pas défini"
 
+    '''
     DATE = blpapi.Name("date")
     ERROR_INFO = blpapi.Name("errorInfo")
     EVENT_TIME = blpapi.Name("EVENT_TIME")
@@ -196,7 +197,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
             str_nomfichier = "_btm_minvar"
         elif TypeOptiWeights_optimisation == TypeOptiWeights.RISK_PARITY:
             str_nomfichier = "_btm_risk"
-           
+    ''' 
     # Json saving through Bloomberg
     with open('json_back' + str_nomfichier + '.json', "w") as file_f:
         jsonback = json.dump(json_back, file_f)
@@ -212,8 +213,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
            
     with open('json_tuw' + str_nomfichier + '.json', "w") as file_f:
         jsontuw = json.dump(json_tuw, file_f)'''
-
-    '''       
+    
     with open('./JSON/json_back' + str_nomfichier + '.json') as file_f:
         json_back = json.load(file_f)
 
@@ -227,7 +227,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         json_values = json.load(file_f)
 
     with open('./JSON/json_tuw' + str_nomfichier + '.json') as file_f:
-        json_tuw = json.load(file_f)'''
+        json_tuw = json.load(file_f)
 
     print(json_back)
     print(json_dd)
@@ -235,6 +235,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     print(json_values)
     print(json_tuw)
 
+    
     date_start = date_start[0:10]
     date_end = date_end[0:10]
 
@@ -249,6 +250,6 @@ def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, st
     return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options))
 
 if __name__ == '__main__':
-    return_json("PX_LAST, INDX_MWEIGHT_HIST", "CAC Index", dt.datetime(2015, 1, 2), dt.datetime(2023, 1, 2), "momentum", "max_sharpe", '10', 'False', '5, 25')
-    # return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9])
+    # return_json("PX_LAST, INDX_MWEIGHT_HIST", "CAC Index", dt.datetime(2015, 1, 2), dt.datetime(2023, 1, 2), "momentum", "max_sharpe", '10', 'False', '5, 25')
+    return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9])
    # sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]

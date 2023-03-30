@@ -10,13 +10,13 @@ import datetime
 
 
 class TypeStrategy(Enum):
-    momentum = 'momentum'
-    btm = 'btm'
-    mc = 'mc'
+    Momentum = 'Momentum'
+    Value = 'Value'
+    Size = 'Size'
 
 
 class Strategies:
-    def __init__(self, strategy=TypeStrategy.mc):
+    def __init__(self, strategy=TypeStrategy.Size):
         self.strategy = strategy
         self.strat_data = None
 
@@ -34,14 +34,14 @@ class Strategies:
         :param other_data: for btc
         :return:
         """
-        if self.strategy == TypeStrategy.momentum.value:
+        if self.strategy == TypeStrategy.Momentum.value:
             if lag1 is None or lag2 is None:
                 raise ValueError('lag1 or lag2 have to be set')
             self.momentum(data, lag1, lag2)
-        elif self.strategy == TypeStrategy.mc.value:
+        elif self.strategy == TypeStrategy.Size.value:
             self.strat_data = data
 
-        elif self.strategy == TypeStrategy.btm.value:
+        elif self.strategy == TypeStrategy.Value.value:
             if other_data is None:
                 raise ValueError('other_data have to be define as mkt_cap')
             other_data.reset_index(inplace=True, drop=True)

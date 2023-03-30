@@ -16,11 +16,12 @@ app.get("/api", (req, res) => {
       req.query.rebalancement,
       req.query.generic,
       req.query.options,
+      req.query.frais,
     ],
   };
   console.log(options);
   //res.setHeader('Cache-Control', 's-max-age=1, stale-while-revalidate');
-  PythonShell.run("main_frontbloom.py", options).then((messages) => {
+  PythonShell.run("main_front.py", options).then((messages) => {
     // results is an array consisting of messages collected during execution
     //console.log('results: %j', messages);
     console.log(messages);

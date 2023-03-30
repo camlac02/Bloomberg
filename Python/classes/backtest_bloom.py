@@ -14,6 +14,7 @@ from classes.generate_syntethic_data import Simulate
 from classes.strategies_bloom import Strategies, TypeStrategy
 warn('Running this module requires the package: polars 0.15.14')
 
+
 class Frequency(Enum):
     HOURLY = "Hourly"
     MONTHLY = "Monthly"
@@ -96,7 +97,8 @@ class Backtester:
     """
 
     def __init__(self, config: Config, data, compo, intReshuffle=1, boolGeneric=False, lag1=None, lag2=None,
-                 strat='min_variance', other_data=None):
+                 strat='min_variance', other_data=None, fees = 0.0002):
+        self.fees = fees
         self.config = config
         self.boolGeneric = boolGeneric
         self.other_data = other_data
@@ -176,15 +178,10 @@ class Backtester:
         """
         for ts in self._calendar:
             for underlying_code in self._universe:
-                if quote_data is None:
-                    self._quote_by_pk[(underlying_code, ts - self._timedelta)] = Quote(
-                        close=100 * (1 + random.random() / 100), ts=ts - self._timedelta
-                    )
-                else:
-                    self._quote_by_pk[(underlying_code, ts - self._timedelta)] = Quote(
-                        close=quote_data.filter((pl.col('Date') == ts)).select([str(underlying_code)]),
-                        ts=ts - self._timedelta,
-                    )
+                self._quote_by_pk[(underlying_code, ts - self._timedelta)] = Quote(
+                    close=quote_data.filter((pl.col('Date') == ts)).select([str(underlying_code)]),
+                    ts=ts - self._timedelta,
+                )
 
     def _compute_weight(self, ts: datetime):
         """
@@ -214,7 +211,9 @@ class Backtester:
         Function which compute the perf of our strategy
         """
         perf_ = 0.0
+        fees_sum = 0.0
         for underlying_code in self._universe:
+
             # posi = self.polarsdfPosition.filter((pl.col('Date') == ts)).select([str(underlying_code)])
             key = (self.config.strategy_code, underlying_code, prev_ts)
 
@@ -234,8 +233,13 @@ class Backtester:
 
                 if current_quote is not None and previous_quote is not None:
                     rdt = current_quote.close / previous_quote.close - 1
-                    perf_ += weight.value * rdt if not pd.isna(rdt.to_numpy()[0][0]) else 0
+                    fees_sum += self.fees * \
+                                abs(
+                                    self._weight_by_pk[(self.config.strategy_code, underlying_code, prev_ts)].value.to_numpy()[0][0] - self._weight_by_pk[(self.config.strategy_code, underlying_code, ts)].value.to_numpy()[0][0]
+                                )\
+                                * self._level_by_ts[prev_ts - self._timedelta].close
 
+                    perf_ += weight.value * rdt if not pd.isna(rdt.to_numpy()[0][0]) else 0
                     # update hit statistics
                     value_int = weight.value.to_numpy()[0][0].copy()
                     if value_int != 0:
@@ -245,7 +249,7 @@ class Backtester:
                         f"missing quote for {underlying_code} at {prev_ts - self._timedelta} "
                         f"or {ts - self._timedelta}"
                     )
-        return perf_
+        return perf_, fees_sum
 
     def compute_levels(self) -> List[Quote]:
         """
@@ -260,10 +264,10 @@ class Backtester:
                 quote = Quote(close=self.config.basis, ts=ts - self._timedelta)
                 self._level_by_ts[ts - self._timedelta] = quote
             else:
-                perf = self._compute_perf(ts, prev_ts=prev_ts)
+                perf, fees = self._compute_perf(ts, prev_ts=prev_ts)
                 close = self._level_by_ts.get(prev_ts - self._timedelta).close * (
                         1 + perf
-                ).to_pandas().values[0][0]
+                ).to_pandas().values[0][0] - fees
                 quote = Quote(close=close, ts=ts)
                 self._level_by_ts[ts - self._timedelta] = quote
             prev_ts = ts
@@ -294,6 +298,7 @@ class Backtester:
             ts_for_dict, datetime_next_loop = self.find_closest_datetime(ts,
                                                                          datetime_next_loop)  # date at which we take the compo
             compo_ts = self.dictTickersThroughTime[(ts_for_dict, index_name[0])]  # list compo at date ts
+
             # position we take in this univers
             pos_ts = self.compute_position_ts(compo_ts, pos, ts, q=q)
             pos_ts_opt = self.opti_weights(pos_ts.copy(), ts)
@@ -359,7 +364,7 @@ class Backtester:
             listStocks = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
             dfRet = returns[returns.Date < ts].loc[:, listStocks]
             alloc = opti(dfRet.T, type_strat_alloc, rf=0)
-            if ts.date() <= self.config.start_ts and self.config.strategy_code != TypeStrategy.momentum.value:
+            if ts.date() <= self.config.start_ts and self.config.strategy_code != TypeStrategy.Momentum.value:
                 alloc.final_weight = np.zeros((len(listStocks),))
             elif self.strOptiType == TypeOptiWeights.MIN_VARIANCE:
                 alloc.min_variance()

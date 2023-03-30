@@ -52,6 +52,7 @@ export default function Home() {
     rebalancement: "",
     generic: "",
     options: "",
+    frais: "",
   });
 
   const { data, error, mutate, isLoading } = useSWR(
@@ -64,7 +65,7 @@ export default function Home() {
           chart.optimisation
         }&rebalancement=${chart.rebalancement}&generic=${
           chart.generic
-        }&options=${chart.options}`
+        }&options=${chart.options}&frais=${chart.frais}`
       : null,
     fetcher
   );
@@ -261,7 +262,7 @@ export default function Home() {
                     </select>
                   </div>
 
-                  <div className="col-span-12">
+                  <div className="col-span-6">
                     <label
                       htmlFor="example9"
                       className="mb-1 block text-sm font-medium text-gray-500"
@@ -276,6 +277,25 @@ export default function Home() {
                       value={chart.options}
                       onChange={(e) =>
                         setChart({ ...chart, options: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="col-span-6">
+                    <label
+                      htmlFor="example9"
+                      className="mb-1 block text-sm font-medium text-gray-500"
+                    >
+                      Trading Cost
+                    </label>
+                    <input
+                      type="text"
+                      id="example9"
+                      className="block h-8 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-400 focus:ring focus:ring-primary-200 focus:ring-opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
+                      placeholder="0.0002"
+                      value={chart.frais}
+                      onChange={(e) =>
+                        setChart({ ...chart, frais: e.target.value })
                       }
                     />
                   </div>
