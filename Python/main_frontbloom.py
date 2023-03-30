@@ -154,16 +154,20 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_tuw = json.dumps(dict_quotes)
     print(json_tuw)
 
-    # A vérifier
     dfRet = df_backtester['close'].pct_change()
-    daily_returns = (1 + dfRet) ** (1 / int_rebalancement) - 1
-    std_daily = np.std(daily_returns)*100
+    std_daily = 100*np.std(dfRet) / np.sqrt(int_rebalancement)
+    # std_daily = np.std(daily_returns)*100
 
     total_return = (df_backtester.close.iloc[-1] / df_backtester.close.iloc[0]) - 1
-    annualized_perf = (1 + total_return) ** (1 / (date_end-date_start).days/365) - 1 # false
+    annualized_perf = (1 + total_return) ** (1 / ((date_end-date_start).days/365)) - 1 # false
 
-    dict_quotes = [{'Daily Vol %': std_daily, "Monthly Vol %": std_daily * np.sqrt(22),
-                    "Annualized Vol %": std_daily * np.sqrt(252), 'Annualized Perf %': annualized_perf*100}]
+    # Loop on each element of backtester object to format json
+    arr_values = [round(std_daily, 2), round(std_daily * np.sqrt(22), 2), round(std_daily * np.sqrt(252), 2), round(annualized_perf*100, 2), round(total_return*100, 2)]
+    arr_names = ["Daily Vol %", "Monthly Vol %", "Annualized Vol %", "Annualized Perf %", "Overall Perf %"]
+    dict_quotes = []
+    for int_element in range(len(arr_values)):
+        dict_quote = {'variable': arr_names[int_element], 'value': arr_values[int_element]}
+        dict_quotes.append(dict_quote)
 
     json_stats = json.dumps(dict_quotes)
 
@@ -181,7 +185,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
 
     print(json_cac)
-    #print(json_stats)
+    print(json_stats)
 
 
 def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais):

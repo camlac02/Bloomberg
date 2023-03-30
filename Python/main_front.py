@@ -114,10 +114,11 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     date_start = date_start[0:10]
     date_end = date_end[0:10]
 
-    cac = yf.download('^FCHI', start=date_start, end=date_end).Close
+    str_index = "^GSPC" if str_tickers == "SPX Index" else '^FCHI'
+    cac = yf.download(str_index, start=date_start, end=date_end).Close
     df_cac = pd.DataFrame(100*cac/cac.iloc[0]).reset_index().to_dict('records')
     json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
-
+    
     print(json_cac)
     print(json_perf)
 

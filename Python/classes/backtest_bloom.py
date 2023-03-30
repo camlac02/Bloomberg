@@ -97,7 +97,7 @@ class Backtester:
     """
 
     def __init__(self, config: Config, data, compo, intReshuffle=1, boolGeneric=False, lag1=None, lag2=None,
-                 strat='min_variance', other_data=None, fees = 0.0002):
+                 strat='min_variance', other_data=None, fees=0):
         self.fees = fees
         self.config = config
         self.boolGeneric = boolGeneric

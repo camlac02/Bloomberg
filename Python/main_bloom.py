@@ -1,6 +1,6 @@
 import sys
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-# import blpapi
+import blpapi
 import json
 import datetime as dt
 import yfinance as yf
@@ -18,6 +18,12 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         int_rebalancement = int(str_rebelancement)
     else :
         int_rebalancement = 10
+
+    if str_frais != "":
+        float_frais = float(str_frais)
+    else :
+        float_frais = 0
+
     if str_generic == 'True':
         bool_generic = True
     else:
@@ -83,7 +89,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
                            frequency=Frequency.DAILY)
     Backtester_backtest = Backtester(config=configuration, data=df_history, compo=dic_tickers,
                           intReshuffle=int_rebalancement, boolGeneric=bool_generic, lag1=int_lag1, lag2=int_lag2, 
-                          strat=TypeOptiWeights_optimisation, other_data = df_otherdata)
+                          strat=TypeOptiWeights_optimisation, other_data = df_otherdata, fees=float_frais)
     df_back = Backtester_backtest.compute_levels()
 
     # Loop on each element of backtester object to format json
@@ -156,7 +162,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     annualized_perf = (1 + total_return) ** (1 / ((date_end-date_start).days/365)) - 1 # false
 
     # Loop on each element of backtester object to format json
-    arr_values = [std_daily, std_daily * np.sqrt(22), std_daily * np.sqrt(252), annualized_perf*100, total_return*100]
+    arr_values = [round(std_daily, 2), round(std_daily * np.sqrt(22), 2), round(std_daily * np.sqrt(252), 2), round(annualized_perf*100, 2), round(total_return*100, 2)]
     arr_names = ["Daily Vol %", "Monthly Vol %", "Annualized Vol %", "Annualized Perf %", "Overall Perf %"]
     dict_quotes = []
     for int_element in range(len(arr_values)):
@@ -164,7 +170,6 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         dict_quotes.append(dict_quote)
 
     json_stats = json.dumps(dict_quotes)
-    #print(json_stats)
 
     # Create output PORT from dict
     dfOutputPort = pd.DataFrame.from_dict(Backtester_backtest._weight_by_pk, orient='index', columns=["ts", "underlying_code",'value'] ,dtype=None)
@@ -221,6 +226,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
 
     print(json_cac)
+    print(json_stats)
 
 
 def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais):
