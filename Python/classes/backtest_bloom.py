@@ -5,14 +5,12 @@ from enum import Enum
 import numpy as np
 from typing import List
 import pandas as pd
-from warnings import warn
 from time import time
 from functools import reduce
 import polars as pl
 from classes.opt import OptimizeAllocation as opti
 from classes.generate_syntethic_data import Simulate
 from classes.strategies_bloom import Strategies, TypeStrategy
-warn('Running this module requires the package: polars 0.15.14')
 
 
 class Frequency(Enum):

@@ -3,7 +3,8 @@ import numpy as np
 import yfinance as yf
 from scipy.optimize import minimize
 import math
-
+import warnings
+warnings.filterwarnings('ignore')
 
 class OptimizeAllocation:
     def __init__(self, returns, type_strat_alloc, w=None, rf=0):

@@ -1,8 +1,7 @@
 import pandas as pd
-# import blpapi
+import blpapi
 import datetime as dt
 import numpy as np
-
 
 class BLP():
     # -----------------------------------------------------------------------------------------------------
@@ -39,7 +38,6 @@ class BLP():
         self.session.openService('//BLP/refdata')
         self.refDataSvc = self.session.getService('//BLP/refdata')
 
-        print('Session open')
 
     # -----------------------------------------------------------------------------------------------------
     # -----------------------------------------------------------------------------------------------------
@@ -93,7 +91,6 @@ class BLP():
         # -----------------------------------------------------------------------
 
         requestID = self.session.sendRequest(request)
-        print("Sending request")
 
         # -----------------------------------------------------------------------
         # Receive request
@@ -210,7 +207,6 @@ class BLP():
         # -----------------------------------------------------------------------
 
         requestID = self.session.sendRequest(request)
-        print("Sending request")
 
         # -----------------------------------------------------------------------
         # Receive request
@@ -324,7 +320,6 @@ class BLP():
         # -----------------------------------------------------------------------
 
         requestID = self.session.sendRequest(request)
-        print("Sending request")
 
         # -----------------------------------------------------------------------
         # Receive request
@@ -428,7 +423,6 @@ class BLP():
     # -----------------------------------------------------------------------------------------------------
 
     def closeSession(self):
-        print("Session closed")
         self.session.stop()
 
     # blp.bds('RIY Index', "INDX_MWEIGHT", END_DATE_OVERRIDE="20210101")
