@@ -11,6 +11,7 @@ class OptimizeAllocation:
 
         # return matrix of only the stock which I am long (short) in
         self.return_matrix = returns
+        self.return_matrix.fillna(0, inplace=True)
         self.initial_weight = w if None else np.array([1/returns.shape[0] - 0.01]*returns.shape[0])
         self.rf = rf
         self.final_weight = None

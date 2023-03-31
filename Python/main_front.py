@@ -101,9 +101,8 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     with open('./JSON/json_tuw' + str_nomfichier + '.json') as file_f:
         json_tuw = json.load(file_f)
 
-    # a Revoir
-    with open('./JSON/json_stats_mom_maxs.json') as file_f:
-        json_perf = json.load(file_f)
+    with open('./JSON/json_perfs' + str_nomfichier + '.json') as file_f:
+        json_perfs = json.load(file_f)
 
     print(json_back)
     print(json_dd)
@@ -120,7 +119,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
     
     print(json_cac)
-    print(json_perf)
+    print(json_perfs)
 
 
 def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais):

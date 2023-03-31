@@ -240,6 +240,7 @@ class Backtester:
                                 * self._level_by_ts[prev_ts - self._timedelta].close
 
                     perf_ += weight.value * rdt if not pd.isna(rdt.to_numpy()[0][0]) else 0
+
                     # update hit statistics
                     value_int = weight.value.to_numpy()[0][0].copy()
                     if value_int != 0:
@@ -363,7 +364,7 @@ class Backtester:
             # keep only passed date and stock we go long or short on
             listStocks = list(pos_ts.loc[:, type * pos_ts.iloc[0] > 0].columns)
             dfRet = returns[returns.Date < ts].loc[:, listStocks]
-            alloc = opti(dfRet.T, type_strat_alloc, rf=0)
+            alloc = opti(dfRet.T.copy(), type_strat_alloc, rf=0)
             if ts.date() <= self.config.start_ts and self.config.strategy_code != TypeStrategy.Momentum.value:
                 alloc.final_weight = np.zeros((len(listStocks),))
             elif self.strOptiType == TypeOptiWeights.MIN_VARIANCE:
