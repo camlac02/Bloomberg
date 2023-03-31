@@ -179,6 +179,8 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     dfOutputPort.reset_index(inplace=True, drop=True)
     # polars to int
     dfOutputPort['value'] = dfOutputPort['value'].apply(lambda x: x.to_numpy()[0][0])
+    # Port Saving
+    dfOutputPort.to_csv('output_port.csv', index=False)
 
     # Json saving
     # File name initialisation following type of strategy and optimisation
