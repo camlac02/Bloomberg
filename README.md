@@ -36,7 +36,7 @@ Fields : _PX_LAST, INDX_MWEIGHT_HIST_
 
 Options : _5, 25_
 
-![](./Images/Input_HTML.png)
+![](./Résultats/Input_HTML.png)
 
 Then, validate and wait until the loader is gone.
 
