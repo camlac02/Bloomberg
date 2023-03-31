@@ -179,6 +179,9 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     dfOutputPort.reset_index(inplace=True, drop=True)
     # polars to int
     dfOutputPort['value'] = dfOutputPort['value'].apply(lambda x: x.to_numpy()[0][0])
+    
+    #PORT Saving
+    dfOutputPort.to_csv('output_port.csv', index=False)
 
     date_start = date_start[0:10]
     date_end = date_end[0:10]
