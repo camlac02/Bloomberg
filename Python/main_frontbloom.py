@@ -30,21 +30,21 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         bool_generic = False 
 
     # Strategy type definition
-    if str_strategie == "momentum":
-        TypeStrategy_strategie = TypeStrategy.momentum
+    if str_strategie == "Momentum":
+        TypeStrategy_strategie = TypeStrategy.Momentum
         if len(arr_options) != 2:
             "Il faut définir les lags pour la stratégie momentum"
         else: 
             df_otherdata = None
             int_lag1 = int(arr_options[0])
             int_lag2 = int(arr_options[1])
-    elif str_strategie == "mc":
-        TypeStrategy_strategie = TypeStrategy.mc
+    elif str_strategie == "Size":
+        TypeStrategy_strategie = TypeStrategy.Size
         df_otherdata = None
         int_lag1 = None
         int_lag2 = None
-    elif str_strategie == "btm":
-        TypeStrategy_strategie = TypeStrategy.btm
+    elif str_strategie == "Value":
+        TypeStrategy_strategie = TypeStrategy.Value
         if len(arr_options) != 3:
             "Il faut définir les lags et l'autre type de data pour la stratégie book-to-market"
         else: 
@@ -81,7 +81,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     dic_tickers = {k: list(map(lambda x: x + " Equity", np.array(v).flatten().tolist())) for k, v in dic_compo.items()}
     df_history = blp.bdh(list_index, ['PX_LAST'], date_start, date_end) 
 
-    if str_strategie == TypeStrategy.btm.value:
+    if str_strategie == TypeStrategy.Value.value:
         df_otherdata = blp.bdh(list_index, [str_otherdata], date_start, date_end)
 
     configuration = Config(universe=list_index, start_ts=date_start, end_ts=date_end,
@@ -89,7 +89,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
                            frequency=Frequency.DAILY)
     Backtester_backtest = Backtester(config=configuration, data=df_history, compo=dic_tickers,
                           intReshuffle=int_rebalancement, boolGeneric=bool_generic, lag1=int_lag1, lag2=int_lag2, 
-                          strat=TypeOptiWeights_optimisation, other_data = df_otherdata)
+                          strat=TypeOptiWeights_optimisation, other_data = df_otherdata, fees=float_frais)
     df_back = Backtester_backtest.compute_levels()
 
     # Loop on each element of backtester object to format json
@@ -163,13 +163,13 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
 
     # Loop on each element of backtester object to format json
     arr_values = [round(std_daily, 2), round(std_daily * np.sqrt(22), 2), round(std_daily * np.sqrt(252), 2), round(annualized_perf*100, 2), round(total_return*100, 2)]
-    arr_names = ["Daily Vol %", "Monthly Vol %", "Annualized Vol %", "Annualized Perf %", "Overall Perf %"]
+    arr_names = ["Daily Vol %", "Monthly Vol %", "Annualized Vol %", "Annualized Perf %", "Overall Perf"]
     dict_quotes = []
     for int_element in range(len(arr_values)):
         dict_quote = {'variable': arr_names[int_element], 'value': arr_values[int_element]}
         dict_quotes.append(dict_quote)
 
-    json_stats = json.dumps(dict_quotes)
+    json_perfs = json.dumps(dict_quotes)
 
     # Create output PORT from dict
     dfOutputPort = pd.DataFrame.from_dict(Backtester_backtest._weight_by_pk, orient='index', columns=["ts", "underlying_code",'value'] ,dtype=None)
@@ -180,16 +180,21 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
     # polars to int
     dfOutputPort['value'] = dfOutputPort['value'].apply(lambda x: x.to_numpy()[0][0])
 
-    cac = yf.download('^FCHI', start=date_start, end=date_end).Close
+    date_start = date_start[0:10]
+    date_end = date_end[0:10]
+    
+    str_index = "^GSPC" if str_tickers == "SPX Index" else '^FCHI'
+    cac = yf.download(str_index, start=date_start, end=date_end).Close
     df_cac = pd.DataFrame(100*cac/cac.iloc[0]).reset_index().to_dict('records')
     json_cac = json.dumps([{"ts": row["Date"].strftime("%Y-%m-%d"), "close": row["Close"]} for row in df_cac])
 
     print(json_cac)
-    print(json_stats)
+    print(json_perfs)
+    blp.closeSession()
 
 
 def return_json(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais):
     return (return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais))
 
 if __name__ == '__main__':
-    return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9])
+    return_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9], sys.argv[10])
