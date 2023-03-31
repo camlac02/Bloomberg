@@ -40,6 +40,8 @@ Options : _5, 25_
 
 Then, validate and wait until the loader is gone.
 
+If you want to test with saving files (without using bloomberg), go to line 24 in pages/api/index.js and change "main_frontbloom.py" by "main_front.py"
+
 ## References
 
 To learn more about our project, take a look at the following resources that help us to build the front of the project and the link with our python code base:

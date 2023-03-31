@@ -1,12 +1,8 @@
 import sys
 from classes.backtest_bloom import Backtester, Config, Frequency, TypeOptiWeights
-# import blpapi
 import json
-import datetime as dt
 import yfinance as yf
-import numpy as np
 import pandas as pd
-from classes.module import BLP
 from classes.strategies_bloom import Strategies, TypeStrategy
 
 def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, str_optimisation, str_rebelancement, str_generic, str_options, str_frais):

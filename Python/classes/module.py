@@ -1,5 +1,5 @@
 import pandas as pd
-# import blpapi
+import blpapi
 import datetime as dt
 import numpy as np
 
