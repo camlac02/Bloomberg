@@ -26,7 +26,7 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
         bool_generic = False 
 
     # Strategy type definition
-    if str_strategie == "momentum":
+    if str_strategie == "Momentum":
         TypeStrategy_strategie = TypeStrategy.Momentum
         if len(arr_options) != 2:
             "Il faut définir les lags pour la stratégie momentum"
@@ -34,12 +34,12 @@ def return_values(str_fields, str_tickers, date_start, date_end, str_strategie, 
             df_otherdata = None
             int_lag1 = int(arr_options[0])
             int_lag2 = int(arr_options[1])
-    elif str_strategie == "mc":
+    elif str_strategie == "Size":
         TypeStrategy_strategie = TypeStrategy.Size
         df_otherdata = None
         int_lag1 = None
         int_lag2 = None
-    elif str_strategie == "btm":
+    elif str_strategie == "Value":
         TypeStrategy_strategie = TypeStrategy.Value
         if len(arr_options) != 3:
             "Il faut définir les lags et l'autre type de data pour la stratégie book-to-market"
