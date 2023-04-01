@@ -194,9 +194,9 @@ export default function Home() {
                       }
                     >
                       <option value="">Sélectionner une stratégie</option>
-                      <option value="btm">Book-to-Market</option>
-                      <option value="mc">Market Capitalization</option>
-                      <option value="momentum">Momentum</option>
+                      <option value="Value">Value</option>
+                      <option value="Size">Size</option>
+                      <option value="Momentum">Momentum</option>
                     </select>
                   </div>
 
